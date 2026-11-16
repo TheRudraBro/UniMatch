@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { MapPin, ArrowRight, GraduationCap, Wallet } from "lucide-react";
+import { MapPin, ArrowRight } from "lucide-react";
 import Section from "@/components/common/Section";
 import SectionHeading from "@/components/common/SectionHeading";
 import Badge from "@/components/common/Badge";
@@ -15,6 +15,9 @@ import {
 
 export default function FindResults() {
   const [params] = useSearchParams();
+
+  // URL থেকে সব প্যারামিটার নিচ্ছি
+  const query = params.get("q") || params.get("query") || ""; // Hero.jsx বা Navbar এর সার্চের জন্য
   const ssc = params.get("sscGpa") || "";
   const hsc = params.get("hscGpa") || "";
   const background = params.get("background") || "";
@@ -37,7 +40,31 @@ export default function FindResults() {
       })
       .filter((p) => {
         if (!p.uni) return false;
+
+        // --- নতুন টেক্সট সার্চ লজিক (University, Department, City) ---
+        if (query) {
+          const searchKeyword = query.toLowerCase();
+          const uniName = p.uni.name.toLowerCase();
+          const uniCity = (
+            p.uni.district ||
+            p.uni.division ||
+            ""
+          ).toLowerCase();
+          const progName = p.programme.toLowerCase();
+
+          // যদি নাম, শহর বা ডিপার্টমেন্টের সাথে কি-ওয়ার্ড না মেলে, তবে বাদ দিবে
+          if (
+            !uniName.includes(searchKeyword) &&
+            !uniCity.includes(searchKeyword) &&
+            !progName.includes(searchKeyword)
+          ) {
+            return false;
+          }
+        }
+
+        // --- আগের ফিল্টার লজিকগুলো ---
         if (division && p.uni.division !== division) return false;
+
         if (background && background !== "Science") {
           const requirementText = p.requirements
             .map((r) => `${r.generalEligibility} ${r.requiredSubjects}`)
@@ -49,6 +76,7 @@ export default function FindResults() {
           )
             return false;
         }
+
         if (
           minBudget != null &&
           minBudget >= 0 &&
@@ -63,8 +91,7 @@ export default function FindResults() {
           p.cost > maxBudget
         )
           return false;
-        // Unknown costs remain visible so students are not misled into thinking
-        // the programme is over budget or free.
+
         return true;
       })
       .sort((a, b) => {
@@ -79,57 +106,75 @@ export default function FindResults() {
           (a.cost ?? Infinity) - (b.cost ?? Infinity)
         );
       });
-  }, [ssc, hsc, background, minBudget, maxBudget, division]);
+  }, [query, ssc, hsc, background, minBudget, maxBudget, division]);
 
   const universityCount = new Set(results.map((r) => r.university)).size;
 
   return (
     <Section>
       <SectionHeading
-        eyebrow="31 universities · 416 programmes"
+        eyebrow="Search Results"
         title="Your university matches"
         subtitle="Programme-level fees and admission notes from the supplied UniMatch workbook. Matching is a guide, not an admission decision."
       />
+
       <div className="mb-6 rounded-2xl border border-line bg-surface p-4 text-sm text-content-muted">
         <div className="flex flex-wrap gap-x-5 gap-y-2">
-          <span>
-            SSC: <b className="text-content">{ssc || "Not entered"}</b>
-          </span>
-          <span>
-            HSC: <b className="text-content">{hsc || "Not entered"}</b>
-          </span>
-          <span>
-            Background: <b className="text-content">{background || "Any"}</b>
-          </span>
-          <span>
-            Budget:{" "}
-            <b className="text-content">
-              {minBudget == null && maxBudget == null
-                ? "Any"
-                : `${minBudget == null ? "No minimum" : formatBDT(minBudget)} – ${maxBudget == null ? "No maximum" : formatBDT(maxBudget)}`}
-            </b>
-          </span>
-          <span>
-            Division: <b className="text-content">{division || "All"}</b>
-          </span>
+          {query && (
+            <span>
+              Keyword:{" "}
+              <b className="text-brand-600 dark:text-brand-300">"{query}"</b>
+            </span>
+          )}
+          {ssc && (
+            <span>
+              SSC: <b className="text-content">{ssc}</b>
+            </span>
+          )}
+          {hsc && (
+            <span>
+              HSC: <b className="text-content">{hsc}</b>
+            </span>
+          )}
+          {background && (
+            <span>
+              Background: <b className="text-content">{background}</b>
+            </span>
+          )}
+          {(minBudget != null || maxBudget != null) && (
+            <span>
+              Budget:{" "}
+              <b className="text-content">
+                {`${minBudget == null ? "No minimum" : formatBDT(minBudget)} – ${maxBudget == null ? "No maximum" : formatBDT(maxBudget)}`}
+              </b>
+            </span>
+          )}
+          {division && (
+            <span>
+              Division: <b className="text-content">{division}</b>
+            </span>
+          )}
         </div>
-        <p className="mt-2">
-          Showing {results.length} programme records across {universityCount}{" "}
-          universities. Costs not published in the workbook are retained and
-          labelled.
+
+        <p className="mt-4">
+          Showing <strong className="text-content">{results.length}</strong>{" "}
+          programme records across{" "}
+          <strong className="text-content">{universityCount}</strong>{" "}
+          universities.
         </p>
       </div>
 
       {results.length === 0 ? (
         <div className="card-base p-8 text-center">
-          <h3 className="font-semibold text-content">
+          <h3 className="text-xl font-semibold text-content">
             No programme matches these filters
           </h3>
           <p className="mt-2 text-sm text-content-muted">
-            Try increasing your budget or selecting another division.
+            Try searching with a different university name, department, or
+            clearing some filters.
           </p>
-          <Button to="/find" variant="outline" className="mt-4">
-            Clear search
+          <Button to="/find" variant="outline" className="mt-6">
+            Clear all filters
           </Button>
         </div>
       ) : (
@@ -176,31 +221,10 @@ export default function FindResults() {
                     {p.totalCredits || "Not published"}
                   </p>
                 </div>
-                <div className="rounded-xl bg-surface-muted p-3">
-                  <p className="text-xs text-content-muted">Semesters</p>
-                  <p className="mt-1 font-semibold text-content">
-                    {p.totalSemesters || "Not published"}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-surface-muted p-3">
-                  <p className="text-xs text-content-muted">Per-credit fee</p>
-                  <p className="mt-1 font-semibold text-content">
-                    {p.perCreditFee || "Not published"}
-                  </p>
-                </div>
               </div>
               <p className="mt-3 text-xs text-content-muted">
                 {p.eligibility.reason}
               </p>
-              {p.requirements[0] && (
-                <p className="mt-2 line-clamp-2 text-xs text-content-muted">
-                  <b>Subjects:</b>{" "}
-                  {p.requirements
-                    .map((r) => r.requiredSubjects)
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              )}
               <div className="mt-4 flex items-center justify-between border-t border-line pt-3">
                 <Link
                   to={`/university/${p.uni.id}`}
@@ -208,9 +232,6 @@ export default function FindResults() {
                 >
                   University details <ArrowRight className="h-4 w-4" />
                 </Link>
-                <span className="text-xs text-content-muted">
-                  Verify before applying
-                </span>
               </div>
             </article>
           ))}
