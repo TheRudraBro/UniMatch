@@ -17,7 +17,8 @@ export function QuickSearch() {
       sscGpa: '',
       hscGpa: '',
       background: '',
-      budget: '',
+      minBudget: '',
+      maxBudget: '',
       division: '',
     },
   });
@@ -53,7 +54,7 @@ export function QuickSearch() {
 
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6"
+          className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7"
         >
           <FormField label="SSC GPA" htmlFor="sscGpa">
             <Input
@@ -91,14 +92,12 @@ export function QuickSearch() {
             </Select>
           </FormField>
 
-          <FormField label="Total Budget (BDT)" htmlFor="budget" className="col-span-2 md:col-span-1">
-            <Input
-              id="budget"
-              type="number"
-              min="0"
-              placeholder="e.g. 800000"
-              {...register('budget', { min: 0 })}
-            />
+          <FormField label="Min Budget (BDT)" htmlFor="minBudget">
+            <Input id="minBudget" type="number" min="0" placeholder="700000" {...register('minBudget', { min: 0 })} />
+          </FormField>
+
+          <FormField label="Max Budget (BDT)" htmlFor="maxBudget">
+            <Input id="maxBudget" type="number" min="0" placeholder="900000" {...register('maxBudget', { min: 0 })} />
           </FormField>
 
           <FormField label="Division" htmlFor="division" className="col-span-2 md:col-span-1">
@@ -112,7 +111,7 @@ export function QuickSearch() {
             </Select>
           </FormField>
 
-          <div className="col-span-2 flex items-end md:col-span-3 lg:col-span-1">
+          <div className="col-span-2 flex items-end md:col-span-4 lg:col-span-1">
             <Button type="submit" size="md" className="w-full">
               <Search className="h-4 w-4" /> Search
             </Button>

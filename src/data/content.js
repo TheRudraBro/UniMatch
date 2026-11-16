@@ -78,16 +78,16 @@ export const prepFeatures = [
  * seeded records), not marketing claims. Numbers are computed where possible.
  */
 export const platformStats = [
-  { label: 'BD universities seeded', value: 20, suffix: '', icon: 'School' },
-  { label: 'Departments in catalog', value: 22, suffix: '', icon: 'BookMarked' },
+  { label: 'BD universities covered', value: 31, suffix: '', icon: 'School' },
+  { label: 'Programme fee records', value: 416, suffix: '', icon: 'BookMarked' },
   { label: 'Study destinations', value: 5, suffix: '', icon: 'Globe2' },
   { label: 'Divisions covered', value: 8, suffix: '', icon: 'MapPin' },
 ];
 
 // Simple bar-chart data for the stats section (seeded records by category).
 export const seedBreakdown = [
-  { name: 'BD Unis', count: 20 },
-  { name: 'Departments', count: 22 },
+  { name: 'BD Unis', count: 31 },
+  { name: 'Programme records', count: 416 },
   { name: 'Intl Unis', count: 5 },
   { name: 'Divisions', count: 8 },
 ];
