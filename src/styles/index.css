@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light theme tokens (R G B, consumed via rgb(var(--x) / a)) */
+    --surface: 248 250 252; /* #F8FAFC */
+    --card: 255 255 255;
+    --card-muted: 241 245 249;
+    --line: 226 232 240;
+    --content: 15 23 42; /* slate-900 */
+    --content-muted: 71 85 105; /* slate-600 */
+  }
+
+  .dark {
+    --surface: 11 17 32; /* #0B1120 */
+    --card: 21 30 48; /* #151E30 */
+    --card-muted: 30 41 59;
+    --line: 39 51 74;
+    --content: 226 232 240;
+    --content-muted: 148 163 184;
+  }
+
+  * {
+    @apply border-line;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-surface text-content font-sans antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  ::selection {
+    @apply bg-brand-500/25;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-line rounded-full;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+}
+
+@layer components {
+  .container-px {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .card-base {
+    @apply rounded-2xl border border-line bg-card shadow-soft;
+  }
+
+  .input-base {
+    @apply w-full rounded-xl border border-line bg-card px-4 py-2.5 text-sm text-content
+      placeholder:text-content-muted/70 outline-none transition
+      focus:border-brand-500 focus:ring-2 focus:ring-brand-500/25;
+  }
+
+  .link-muted {
+    @apply text-content-muted transition-colors hover:text-content;
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border border-line bg-card-muted
+      px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-300;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-brand-600 via-brand-500 to-accent-500 bg-clip-text text-transparent;
+  }
+}
