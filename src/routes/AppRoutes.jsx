@@ -1,3 +1,4 @@
+// src/routes/AppRoutes.jsx
 import { Routes, Route } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
@@ -11,7 +12,9 @@ import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import UserDashboard from "@/pages/UserDashboard";
 import AdminDashboard from "@/pages/AdminDashboard";
-import Compare from "@/pages/Compare"; // <-- নতুন পেজ ইমপোর্ট করা হলো
+import Compare from "@/pages/Compare";
+import International from "@/pages/International";
+import Preparation from "@/pages/Preparation"; // <-- Preparation ইমপোর্ট করা হলো
 
 const stub = (props) => <ComingSoon {...props} />;
 
@@ -25,15 +28,16 @@ export default function AppRoutes() {
         <Route path="university/:id" element={<UniversityDetails />} />
         <Route path="login" element={<Login />} />
         <Route path="signup" element={<Signup />} />
-
-        {/* <-- Compare Route অ্যাড করা হলো --> */}
         <Route path="compare" element={<Compare />} />
+        <Route path="international" element={<International />} />
+
+        {/* <-- Preparation Route অ্যাড করা হলো --> */}
+        <Route path="preparation" element={<Preparation />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="dashboard" element={<UserDashboard />} />
         </Route>
-
         <Route element={<ProtectedRoute allowedRole="admin" />}>
           <Route path="admin" element={<AdminDashboard />} />
         </Route>
@@ -42,17 +46,6 @@ export default function AppRoutes() {
         <Route
           path="department/:id"
           element={stub({ title: "Department Details", phase: "Phase 3" })}
-        />
-        <Route
-          path="international"
-          element={stub({
-            title: "International Universities",
-            phase: "Phase 3",
-          })}
-        />
-        <Route
-          path="preparation"
-          element={stub({ title: "Admission Preparation", phase: "Phase 7" })}
         />
         <Route path="about" element={stub({ title: "About UniMatch" })} />
         <Route path="contact" element={stub({ title: "Contact Us" })} />
