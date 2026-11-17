@@ -1,4 +1,3 @@
-// src/routes/AppRoutes.jsx
 import { Routes, Route } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
@@ -14,7 +13,8 @@ import UserDashboard from "@/pages/UserDashboard";
 import AdminDashboard from "@/pages/AdminDashboard";
 import Compare from "@/pages/Compare";
 import International from "@/pages/International";
-import Preparation from "@/pages/Preparation"; // <-- Preparation ইমপোর্ট করা হলো
+import Preparation from "@/pages/Preparation";
+import About from "@/pages/About"; // <-- About পেজ ইমপোর্ট করা হলো
 
 const stub = (props) => <ComingSoon {...props} />;
 
@@ -30,9 +30,10 @@ export default function AppRoutes() {
         <Route path="signup" element={<Signup />} />
         <Route path="compare" element={<Compare />} />
         <Route path="international" element={<International />} />
-
-        {/* <-- Preparation Route অ্যাড করা হলো --> */}
         <Route path="preparation" element={<Preparation />} />
+
+        {/* <-- About Route আপডেট করা হলো --> */}
+        <Route path="about" element={<About />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
@@ -47,7 +48,6 @@ export default function AppRoutes() {
           path="department/:id"
           element={stub({ title: "Department Details", phase: "Phase 3" })}
         />
-        <Route path="about" element={stub({ title: "About UniMatch" })} />
         <Route path="contact" element={stub({ title: "Contact Us" })} />
         <Route path="faq" element={stub({ title: "FAQ" })} />
         <Route path="privacy" element={stub({ title: "Privacy Policy" })} />
