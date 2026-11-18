@@ -1,5 +1,3 @@
-// src/pages/Preparation.jsx
-
 import { useState, useEffect } from "react";
 import {
   BookOpen,
@@ -8,7 +6,6 @@ import {
   Gavel,
   Clock,
   Award,
-  ArrowRight,
   CheckCircle2,
   XCircle,
   Lock,
@@ -53,10 +50,9 @@ const CATEGORIES = [
 
 export default function Preparation() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [testState, setTestState] = useState("selection"); // selection, studying, playing, result
+  const [testState, setTestState] = useState("selection");
   const [selectedCategory, setSelectedCategory] = useState("");
 
-  // Quiz States
   const [questions, setQuestions] = useState([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -69,25 +65,45 @@ export default function Preparation() {
     if (role) setIsAuthenticated(true);
   }, []);
 
-  // টাইমার
+  // টেস্টের রেজাল্ট LocalStorage-এ সেভ করার ফাংশন
+  const finishAndSaveTest = (finalScore) => {
+    const history = JSON.parse(
+      localStorage.getItem("unimatch_test_history") || "[]",
+    );
+    const newEntry = {
+      id: Date.now(),
+      category: selectedCategory,
+      score: finalScore,
+      total: questions.length,
+      date: new Date().toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
+    };
+    localStorage.setItem(
+      "unimatch_test_history",
+      JSON.stringify([newEntry, ...history]),
+    );
+    setTestState("result");
+  };
+
   useEffect(() => {
     let timer;
     if (testState === "playing" && timeLeft > 0) {
       timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
     } else if (testState === "playing" && timeLeft === 0) {
-      setTestState("result");
+      finishAndSaveTest(score);
     }
     return () => clearTimeout(timer);
   }, [timeLeft, testState]);
 
-  // স্টাডি মোড শুরু
   const startStudy = (category) => {
     setSelectedCategory(CATEGORIES.find((c) => c.id === category).title);
     setQuestions(getAllQuestionsForStudy(category));
     setTestState("studying");
   };
 
-  // মক টেস্ট শুরু (No Repeat Logic)
   const startMockTest = (category) => {
     const qList = getNonRepeatingQuestions(category, 10);
     setSelectedCategory(CATEGORIES.find((c) => c.id === category).title);
@@ -99,7 +115,6 @@ export default function Preparation() {
     setSelectedAnswer("");
     setTestState("playing");
 
-    // ইউজারকে জানিয়ে দেওয়া যে কতগুলো প্রশ্ন বাকি আছে
     const used = JSON.parse(localStorage.getItem(`used_qs_${category}`)) || [];
     const total = fullQuestionBank[category].length;
     toast.info(
@@ -114,7 +129,9 @@ export default function Preparation() {
     }
 
     setIsAnswerChecked(true);
-    if (selectedAnswer === questions[currentQIndex].answer) setScore(score + 1);
+    const isCorrect = selectedAnswer === questions[currentQIndex].answer;
+    const updatedScore = isCorrect ? score + 1 : score;
+    if (isCorrect) setScore(updatedScore);
 
     setTimeout(() => {
       if (currentQIndex < questions.length - 1) {
@@ -122,7 +139,7 @@ export default function Preparation() {
         setSelectedAnswer("");
         setIsAnswerChecked(false);
       } else {
-        setTestState("result");
+        finishAndSaveTest(updatedScore);
       }
     }, 1500);
   };
@@ -136,12 +153,11 @@ export default function Preparation() {
   return (
     <Section className="min-h-[80vh]">
       <SectionHeading
-        eyebrow="Admission Prep"
+        eyebrow="Phase 7: Admission Prep"
         title="Question Bank & Mock Tests"
         subtitle="Study over 500+ premium questions per department, then test your skills without facing repeated questions."
       />
 
-      {/* --- State 0: Non-Logged In User Restriction --- */}
       {!isAuthenticated ? (
         <div className="mt-12 max-w-lg mx-auto card-base p-10 text-center shadow-lift border-t-4 border-t-amber-500">
           <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 mb-6">
@@ -169,7 +185,6 @@ export default function Preparation() {
         </div>
       ) : (
         <>
-          {/* --- State 1: Category Selection --- */}
           {testState === "selection" && (
             <div className="mt-12 grid gap-6 sm:grid-cols-2 max-w-4xl mx-auto">
               {CATEGORIES.map((cat) => (
@@ -214,7 +229,6 @@ export default function Preparation() {
             </div>
           )}
 
-          {/* --- State 2: Study Question Bank --- */}
           {testState === "studying" && (
             <div className="mt-8 max-w-4xl mx-auto">
               <div className="flex items-center justify-between mb-6">
@@ -264,7 +278,6 @@ export default function Preparation() {
             </div>
           )}
 
-          {/* --- State 3: Playing Mock Test --- */}
           {testState === "playing" && (
             <div className="mt-8 max-w-3xl mx-auto">
               <div className="flex justify-between items-center mb-6 bg-card p-4 rounded-2xl border border-line shadow-sm">
@@ -339,7 +352,6 @@ export default function Preparation() {
             </div>
           )}
 
-          {/* --- State 4: Result --- */}
           {testState === "result" && (
             <div className="mt-12 max-w-xl mx-auto card-base p-10 text-center shadow-lift border-t-4 border-t-brand-500">
               <Award className="w-20 h-20 text-brand-500 mx-auto mb-6" />
@@ -347,7 +359,7 @@ export default function Preparation() {
                 Test Completed!
               </h2>
               <p className="text-content-muted mb-8">
-                You finished the {selectedCategory} mock test.
+                Your score has been saved to your dashboard.
               </p>
 
               <div className="bg-surface-muted rounded-2xl p-6 mb-8 border border-line">
@@ -369,7 +381,7 @@ export default function Preparation() {
                 >
                   Take Another Test
                 </Button>
-                <Button to="/dashboard">Go to Dashboard</Button>
+                <Button to="/dashboard">View Score in Dashboard</Button>
               </div>
             </div>
           )}

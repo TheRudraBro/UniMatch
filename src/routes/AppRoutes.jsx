@@ -14,7 +14,10 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import Compare from "@/pages/Compare";
 import International from "@/pages/International";
 import Preparation from "@/pages/Preparation";
-import About from "@/pages/About"; // <-- About পেজ ইমপোর্ট করা হলো
+import About from "@/pages/About";
+import Contact from "@/pages/Contact";
+import FAQ from "@/pages/FAQ";
+import Privacy from "@/pages/Privacy";
 
 const stub = (props) => <ComingSoon {...props} />;
 
@@ -31,9 +34,10 @@ export default function AppRoutes() {
         <Route path="compare" element={<Compare />} />
         <Route path="international" element={<International />} />
         <Route path="preparation" element={<Preparation />} />
-
-        {/* <-- About Route আপডেট করা হলো --> */}
         <Route path="about" element={<About />} />
+        <Route path="contact" element={<Contact />} />
+        <Route path="faq" element={<FAQ />} />
+        <Route path="privacy" element={<Privacy />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
@@ -43,14 +47,11 @@ export default function AppRoutes() {
           <Route path="admin" element={<AdminDashboard />} />
         </Route>
 
-        {/* Stubs */}
+        {/* Remaining Stub */}
         <Route
           path="department/:id"
           element={stub({ title: "Department Details", phase: "Phase 3" })}
         />
-        <Route path="contact" element={stub({ title: "Contact Us" })} />
-        <Route path="faq" element={stub({ title: "FAQ" })} />
-        <Route path="privacy" element={stub({ title: "Privacy Policy" })} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
