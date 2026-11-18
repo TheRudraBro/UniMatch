@@ -17,6 +17,7 @@ import {
   seedInternationalUniversities,
   countries,
 } from "@/data/seedInternational";
+import BookmarkButton from "@/components/common/BookmarkButton"; // ইমপোর্ট করা হলো
 
 export default function International() {
   const [selectedCountry, setSelectedCountry] = useState("");
@@ -24,7 +25,6 @@ export default function International() {
   const [hscGpa, setHscGpa] = useState("");
   const [ieltsScore, setIeltsScore] = useState("");
 
-  // কান্ট্রি অনুযায়ী ইউনিভার্সিটি ফিল্টারিং
   const filteredUniversities = useMemo(() => {
     if (!selectedCountry) return seedInternationalUniversities;
     return seedInternationalUniversities.filter(
@@ -40,7 +40,6 @@ export default function International() {
         subtitle="Explore top study destinations worldwide. Check verified institutional links, language requirements, and admission criteria."
       />
 
-      {/* Filter & Profile Matcher Box */}
       <div className="mx-auto mt-10 max-w-4xl card-base p-6 sm:p-8">
         <h3 className="text-lg font-semibold text-content mb-4 flex items-center gap-2">
           <Filter className="w-5 h-5 text-brand-600 dark:text-brand-300" />{" "}
@@ -48,7 +47,6 @@ export default function International() {
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Country Filter */}
           <FormField label="Destination Country">
             <Select
               value={selectedCountry}
@@ -62,8 +60,6 @@ export default function International() {
               ))}
             </Select>
           </FormField>
-
-          {/* SSC GPA */}
           <FormField label="SSC GPA (Optional)">
             <Input
               type="number"
@@ -73,8 +69,6 @@ export default function International() {
               onChange={(e) => setSscGpa(e.target.value)}
             />
           </FormField>
-
-          {/* HSC GPA */}
           <FormField label="HSC GPA (Optional)">
             <Input
               type="number"
@@ -84,8 +78,6 @@ export default function International() {
               onChange={(e) => setHscGpa(e.target.value)}
             />
           </FormField>
-
-          {/* IELTS Target */}
           <FormField label="Target IELTS Score">
             <Input
               type="number"
@@ -120,7 +112,6 @@ export default function International() {
         )}
       </div>
 
-      {/* University Cards Grid */}
       <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredUniversities.map((uni) => {
           const country = countries.find((c) => c.id === uni.countryId);
@@ -129,9 +120,13 @@ export default function International() {
               key={uni.id}
               className="card-base flex flex-col justify-between p-6 relative overflow-hidden transition hover:border-brand-500/40 hover:shadow-lift"
             >
+              {/* গ্লোবাল বুকমার্ক বাটন যুক্ত করা হলো */}
+              <BookmarkButton uniId={uni.id} uniName={uni.name} />
+
               <div>
-                {/* Country Flag & City Header */}
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-3 pr-10">
+                  {" "}
+                  {/* pr-10 যোগ করা হয়েছে */}
                   <span className="text-2xl" aria-hidden>
                     {country?.flag}
                   </span>
@@ -145,7 +140,6 @@ export default function International() {
                   <MapPin className="w-3.5 h-3.5" /> {uni.city}
                 </p>
 
-                {/* Departments Tag */}
                 {uni.departments.length > 0 && (
                   <div className="mb-4">
                     <p className="text-xs font-semibold uppercase tracking-wider text-content-muted mb-2">
@@ -164,7 +158,6 @@ export default function International() {
                   </div>
                 )}
 
-                {/* Requirements & Costs info box */}
                 <div className="space-y-2.5 text-xs text-content-muted border-t border-line pt-4 mt-2">
                   <div className="flex justify-between">
                     <span className="font-semibold text-content">
@@ -195,7 +188,6 @@ export default function International() {
                 </div>
               </div>
 
-              {/* Official Link Button */}
               <div className="mt-6 pt-4 border-t border-line">
                 <Button
                   href={uni.website}

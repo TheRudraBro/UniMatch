@@ -3,7 +3,10 @@ import Section from "@/components/common/Section";
 import { Bookmark, Settings, GraduationCap } from "lucide-react";
 import Button from "@/components/common/Button";
 import UniversityCard from "@/components/common/UniversityCard";
+
+// লোকাল এবং ইন্টারন্যাশনাল দুই ডাটাবেইজই ইমপোর্ট করা হলো
 import { seedUniversities } from "@/data/seedUniversities";
+import { seedInternationalUniversities } from "@/data/seedInternational";
 
 export default function UserDashboard() {
   const [savedUnis, setSavedUnis] = useState([]);
@@ -13,17 +16,20 @@ export default function UserDashboard() {
     const savedIds = JSON.parse(
       localStorage.getItem("unimatch_saved_unis") || "[]",
     );
-    // seedUniversities থেকে আইডি ম্যাচ করে ফুল ডাটা ফিল্টার করে আনা হচ্ছে
-    const filtered = seedUniversities.filter((uni) =>
-      savedIds.includes(uni.id),
-    );
+
+    // লোকাল এবং ইন্টারন্যাশনাল ইউনিভার্সিটির লিস্ট একসাথে যোগ করা
+    const allUniversities = [
+      ...seedUniversities,
+      ...seedInternationalUniversities,
+    ];
+
+    // সেভ করা আইডি অনুযায়ী ফিল্টার করা
+    const filtered = allUniversities.filter((uni) => savedIds.includes(uni.id));
     setSavedUnis(filtered);
   };
 
   useEffect(() => {
     loadSavedUniversities();
-
-    // অন্য কোনো পেজ থেকে বুকমার্ক করলে যেন ড্যাশবোর্ডে সাথে সাথে আপডেট হয়
     window.addEventListener("unimatch_bookmark_updated", loadSavedUniversities);
     return () =>
       window.removeEventListener(
