@@ -13,11 +13,13 @@ import { InitialsBadge } from "./Logo";
 import BookmarkButton from "./BookmarkButton";
 
 export function UniversityCard({ uni }) {
-  // চেক করা হচ্ছে এটি ইন্টারন্যাশনাল ইউনিভার্সিটি কি না (যাদের countryId আছে)
   const isInternational = !!uni.countryId;
 
   return (
-    <Card hover className="flex h-full flex-col relative overflow-visible">
+    <Card
+      hover
+      className="relative flex h-full w-full min-w-0 flex-col overflow-visible"
+    >
       <BookmarkButton uniId={uni.id} uniName={uni.shortName || uni.name} />
 
       <div className="flex items-start gap-3">
@@ -25,15 +27,15 @@ export function UniversityCard({ uni }) {
           <img
             src={uni.logo}
             alt={`${uni.shortName || uni.name} logo`}
-            className="h-12 w-12 rounded-xl object-contain bg-white"
+            className="h-12 w-12 shrink-0 rounded-xl bg-white object-contain"
           />
         ) : (
           <InitialsBadge
             text={uni.shortName || uni.name}
-            className="h-12 w-12 text-sm shrink-0"
+            className="h-12 w-12 shrink-0 text-sm"
           />
         )}
-        <div className="min-w-0 pr-10">
+        <div className="min-w-0 flex-1 pr-10">
           <h3 className="truncate font-semibold text-content">
             {uni.shortName || uni.name}
           </h3>
@@ -41,7 +43,6 @@ export function UniversityCard({ uni }) {
         </div>
       </div>
 
-      {/* ডেসক্রিপশন না থাকলে ডিফল্ট টেক্সট দেখাবে */}
       <p className="mt-3 line-clamp-2 text-sm text-content-muted">
         {uni.description ||
           (isInternational
@@ -51,21 +52,21 @@ export function UniversityCard({ uni }) {
 
       <div className="mt-4 flex flex-wrap gap-2 text-xs">
         <span className="inline-flex items-center gap-1 text-content-muted">
-          <MapPin className="h-3.5 w-3.5" />
+          <MapPin className="h-3.5 w-3.5 shrink-0" />
           {uni.division || uni.city}{" "}
           {isInternational && (
-            <span className="uppercase font-semibold">({uni.countryId})</span>
+            <span className="font-semibold uppercase">({uni.countryId})</span>
           )}
         </span>
 
         {!isInternational && typeof uni.established === "number" && (
           <span className="inline-flex items-center gap-1 text-content-muted">
-            <CalendarDays className="h-3.5 w-3.5" /> Est. {uni.established}
+            <CalendarDays className="h-3.5 w-3.5 shrink-0" /> Est.{" "}
+            {uni.established}
           </span>
         )}
       </div>
 
-      {/* কন্ডিশনাল ব্যাজ (ইন্টারন্যাশনালের জন্য Globe, লোকালের জন্য UGC) */}
       <div className="mt-3 flex flex-wrap gap-1.5">
         {isInternational ? (
           <>
