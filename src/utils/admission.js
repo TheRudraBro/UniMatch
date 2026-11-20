@@ -55,21 +55,25 @@ export function checkGpaEligibility(requirementRows, ssc, hsc) {
   );
   if (!known)
     return {
-      status: "Potential — verify",
+      status: "Check Circular",
       reason:
         "Numeric GPA cut-offs not stated. Check the current admission circular.",
     };
   if (ssc === "" || hsc === "" || ssc == null || hsc == null)
     return {
-      status: "GPA needed",
-      reason: "Enter both SSC and HSC GPA to check the published minimum.",
+      status: `Min GPA: ${known.sscGpa} / ${known.hscGpa}`,
+      reason:
+        known.generalEligibility ||
+        `Minimum SSC GPA ${known.sscGpa} and HSC GPA ${known.hscGpa} required.`,
     };
   const s = Number(ssc),
     h = Number(hsc);
   if (!Number.isFinite(s) || !Number.isFinite(h))
     return {
-      status: "GPA needed",
-      reason: "Enter valid SSC and HSC GPA values.",
+      status: `Min GPA: ${known.sscGpa} / ${known.hscGpa}`,
+      reason:
+        known.generalEligibility ||
+        `Minimum SSC GPA ${known.sscGpa} and HSC GPA ${known.hscGpa} required.`,
     };
   const combinedRule = String(known.combinedGpa).match(/([0-9]+(?:\.[0-9]+)?)/);
   const combined = combinedRule ? Number(combinedRule[1]) : null;
@@ -104,7 +108,7 @@ export function getProgrammeRows(university) {
   return programmes.filter((p) => p.university === university);
 }
 
-// শুধু Undergraduate ডিপার্টমেন্ট ফিল্টার করা (Masters ও Diploma-only বাদ দিয়ে)
+// শুধু Undergraduate ডিপার্টমেন্ট ফিল্টার করা
 export function isUndergraduateProgramme(progName) {
   const p = String(progName || "").trim();
   if (
@@ -128,7 +132,6 @@ export function isUndergraduateProgramme(progName) {
 export function getProgrammeBackground(progName) {
   const p = String(progName || "").toLowerCase();
 
-  // Commerce / Business
   if (
     /\b(bba|business|accounting|finance|marketing|management|economics|bseco|tourism|hospitality|bthm|ithm|entrepreneurship|real estate|agribusiness|ais)\b/.test(
       p,
@@ -140,7 +143,6 @@ export function getProgrammeBackground(progName) {
     return "Commerce";
   }
 
-  // Science / Engineering / Health / Tech
   if (
     /\b(cse|eee|ece|ete|cce|ce|me|ipe|csit|cs|it|itm|swe|bsc|b\.sc|b\. ?pharm|bpharm|pharmacy|engineering|computer|software|electrical|electronic|civil|mechanical|textile|architecture|barch|b\.arch|microbiology|biochemistry|biotechnology|genetic|physics|chemistry|mathematics|math|data science|artificial intelligence|cyber|robotics|automobile|mechatronics|agriculture|nursing|nutrition|food|environmental|public health|bph|maritime|apparel manufacturing|knitwear)\b/.test(
       p,
@@ -149,11 +151,9 @@ export function getProgrammeBackground(progName) {
     return "Science";
   }
 
-  // Arts / Humanities / Law / Social Science
   return "Arts / Humanities";
 }
 
-// ইউনিভার্সিটির নাম ম্যাচ করার হেল্পার
 const normalizeUniName = (name) =>
   String(name || "")
     .replace(/\([^)]*\)/g, "")
@@ -187,18 +187,15 @@ export function searchMatchedDepartments({
     const uni = uniMap.get(normalizeUniName(prog.university));
     if (!uni) continue;
 
-    // 1. Division filter
     if (division && division !== "All" && uni.division !== division) {
       continue;
     }
 
-    // 2. Background (Science / Commerce / Arts) filter
     const progGroup = getProgrammeBackground(prog.programme);
     if (background && progGroup !== background) {
       continue;
     }
 
-    // 3. Budget filter (Total Degree Cost)
     const numericCost = parseMoney(prog.totalDegreeCost);
     if (minB != null || maxB != null) {
       if (numericCost == null) continue;
@@ -206,7 +203,6 @@ export function searchMatchedDepartments({
       if (maxB != null && numericCost > maxB) continue;
     }
 
-    // 4. Optional text search refinement
     if (q) {
       const matchProg = prog.programme.toLowerCase().includes(q);
       const matchUni =
@@ -218,7 +214,6 @@ export function searchMatchedDepartments({
       if (!matchProg && !matchUni && !matchCity) continue;
     }
 
-    // 5. GPA Eligibility Check
     const reqRows = getRequirements(uni.name, prog.programme);
     const eligibility = checkGpaEligibility(reqRows, sscGpa, hscGpa);
 
@@ -227,7 +222,9 @@ export function searchMatchedDepartments({
       programme: prog.programme,
       group: progGroup,
       totalCredits: prog.totalCredits,
+      totalSemesters: prog.totalSemesters,
       perCreditFee: prog.perCreditFee,
+      firstAdmissionPayment: prog.firstAdmissionPayment,
       totalDegreeCost: prog.totalDegreeCost,
       numericCost,
       university: uni,
@@ -235,7 +232,6 @@ export function searchMatchedDepartments({
     });
   }
 
-  // যেগুলোতে GPA মিলেছে সেগুলো আগে এবং কম খরচ থেকে বেশি খরচ ক্রমে সাজানো
   matches.sort((a, b) => {
     const aPass = a.eligibility.status.startsWith("Eligible") ? 0 : 1;
     const bPass = b.eligibility.status.startsWith("Eligible") ? 0 : 1;
@@ -244,4 +240,159 @@ export function searchMatchedDepartments({
   });
 
   return matches;
+}
+
+// Header / Hero Search থেকে ডিপার্টমেন্ট সার্চ শনাক্ত করার জন্য Alias লিস্ট
+const DEPT_SEARCH_ALIASES = [
+  [
+    /^(cse|cs|computer science|computer engineering|computer|computer science & engineering|computer science and engineering)$/i,
+    /\b(cse|computer science|computer engineering)\b/i,
+  ],
+  [
+    /^(eee|electrical|electronic|electronics|ece|ete|electrical & electronic engineering|electrical and electronic engineering)$/i,
+    /\b(eee|electrical & electronic|electrical and electronic|electronic & telecommunication|ece|ete)\b/i,
+  ],
+  [/^(swe|software|software engineering)$/i, /\b(swe|software engineering)\b/i],
+  [
+    /^(ce|civil|civil engineering)$/i,
+    /\b(ce|civil engineering|civil & environmental)\b/i,
+  ],
+  [
+    /^(me|mechanical|mechanical engineering)$/i,
+    /\b(me|mechanical engineering)\b/i,
+  ],
+  [/^(ipe|industrial|industrial engineering)$/i, /\b(ipe|industrial)\b/i],
+  [
+    /^(textile|te|textile engineering|knitwear|apparel)$/i,
+    /\b(textile|knitwear|apparel manufacturing)\b/i,
+  ],
+  [/^(ds|data science)$/i, /\b(data science)\b/i],
+  [
+    /^(it|csit|itm|ict|information technology)$/i,
+    /\b(information technology|csit|itm|ict|information & communication)\b/i,
+  ],
+  [
+    /^(bba|business|business administration|bachelor of business administration)$/i,
+    /\b(bba|business administration)\b/i,
+  ],
+  [/^(accounting|ais)$/i, /\b(accounting|ais|bba)\b/i],
+  [/^(finance|banking)$/i, /\b(finance|bba)\b/i],
+  [/^(marketing)$/i, /\b(marketing|bba)\b/i],
+  [/^(management|hrm)$/i, /\b(management|bba)\b/i],
+  [/^(economics|eco|bseco)$/i, /\b(economics|bseco)\b/i],
+  [/^(english|eng|ell|ba english)$/i, /\b(english|ell)\b/i],
+  [/^(law|laws|llb|ll\.b)$/i, /\b(law|laws|ll\.?b)\b/i],
+  [/^(journalism|media|jms|msj|mcj)$/i, /\b(journalism|media)\b/i],
+  [/^(sociology|soc)$/i, /\b(sociology)\b/i],
+  [/^(pharmacy|pharm|bpharm|b\.pharm)$/i, /\b(pharm|pharmacy)\b/i],
+  [/^(architecture|arch|barch|b\.arch)$/i, /\b(architecture|b\.?arch)\b/i],
+  [/^(public health|bph)$/i, /\b(public health|bph)\b/i],
+  [/^(environmental|environmental science)$/i, /\b(environmental)\b/i],
+  [/^(microbiology)$/i, /\b(microbiology)\b/i],
+  [/^(biochemistry)$/i, /\b(biochemistry)\b/i],
+  [
+    /^(biotechnology|genetic|genetic engineering)$/i,
+    /\b(biotechnology|genetic)\b/i,
+  ],
+  [/^(nursing|bsn)$/i, /\b(nursing)\b/i],
+  [/^(agriculture|ag|bsag)$/i, /\b(agriculture)\b/i],
+  [
+    /^(tourism|hospitality|bthm|ithm)$/i,
+    /\b(tourism|hospitality|bthm|ithm)\b/i,
+  ],
+  [
+    /^(fashion|fashion design|graphic design)$/i,
+    /\b(fashion|graphic design)\b/i,
+  ],
+  [/^(bangla)$/i, /\b(bangla)\b/i],
+  [/^(islamic|islamic studies)$/i, /\b(islamic)\b/i],
+  [/^(political science)$/i, /\b(political science)\b/i],
+  [/^(mathematics|math)$/i, /\b(mathematics)\b/i],
+  [/^(physics)$/i, /\b(physics)\b/i],
+];
+
+// Header বা Hero Search Bar থেকে সার্চ করলে ডিপার্টমেন্ট কি না তা চেক করে প্রোগ্রাম লিস্ট বের করা
+export function searchProgrammesByKeyword(query, division = "") {
+  const q = String(query || "").trim();
+  if (!q) return { isDepartmentSearch: false, results: [] };
+
+  const ql = q.toLowerCase();
+
+  // ইউনিভার্সিটির নাম বা লোকেশন ম্যাচ করছে কি না চেক
+  const matchesUniversityOrLocation = seedUniversities.some(
+    (u) =>
+      u.name.toLowerCase().includes(ql) ||
+      (u.shortName && u.shortName.toLowerCase().includes(ql)) ||
+      (u.city && u.city.toLowerCase().includes(ql)) ||
+      (u.division && u.division.toLowerCase().includes(ql)),
+  );
+
+  // ডিপার্টমেন্ট Alias ম্যাচ করছে কি না চেক
+  let aliasRegex = null;
+  for (const [pattern, targetRegex] of DEPT_SEARCH_ALIASES) {
+    if (pattern.test(q)) {
+      aliasRegex = targetRegex;
+      break;
+    }
+  }
+
+  const uniMap = new Map();
+  seedUniversities.forEach((u) => {
+    uniMap.set(normalizeUniName(u.name), u);
+  });
+
+  const matchedProgs = [];
+  for (const prog of programmes) {
+    if (!isUndergraduateProgramme(prog.programme)) continue;
+
+    const isMatch = aliasRegex
+      ? aliasRegex.test(prog.programme)
+      : ql.length >= 3 && prog.programme.toLowerCase().includes(ql);
+
+    if (!isMatch) continue;
+
+    const uni = uniMap.get(normalizeUniName(prog.university));
+    if (!uni) continue;
+
+    if (division && division !== "All" && uni.division !== division) {
+      continue;
+    }
+
+    const reqRows = getRequirements(uni.name, prog.programme);
+    const eligibility = checkGpaEligibility(reqRows, null, null);
+    const numericCost = parseMoney(prog.totalDegreeCost);
+
+    matchedProgs.push({
+      id: prog.id,
+      programme: prog.programme,
+      group: getProgrammeBackground(prog.programme),
+      totalCredits: prog.totalCredits,
+      totalSemesters: prog.totalSemesters,
+      perCreditFee: prog.perCreditFee,
+      firstAdmissionPayment: prog.firstAdmissionPayment,
+      totalDegreeCost: prog.totalDegreeCost,
+      numericCost,
+      university: uni,
+      eligibility,
+    });
+  }
+
+  // যদি ডিপার্টমেন্ট Alias ম্যাচ করে, অথবা ইউনিভার্সিটি/শহরের নামের বদলে প্রোগ্রামের নাম ম্যাচ করে
+  const isDepartmentSearch =
+    Boolean(aliasRegex) ||
+    (!matchesUniversityOrLocation && matchedProgs.length > 0);
+
+  if (!isDepartmentSearch) {
+    return { isDepartmentSearch: false, results: [] };
+  }
+
+  // যাদের টোটাল কস্ট দেওয়া আছে সেগুলো আগে এবং কম খরচ থেকে বেশি খরচ ক্রমে সাজানো
+  matchedProgs.sort((a, b) => {
+    if (a.numericCost == null && b.numericCost == null) return 0;
+    if (a.numericCost == null) return 1;
+    if (b.numericCost == null) return -1;
+    return a.numericCost - b.numericCost;
+  });
+
+  return { isDepartmentSearch: true, results: matchedProgs };
 }

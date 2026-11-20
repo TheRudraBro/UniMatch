@@ -26,20 +26,30 @@ export function MatchedProgramCard({ item }) {
 
   const isEligible = eligibility.status.startsWith("Eligible");
   const isBelowGpa = eligibility.status === "Below published GPA";
+  const isMinGpaLabel = eligibility.status.startsWith("Min GPA");
 
   return (
-    <Card hover className="flex h-full flex-col relative overflow-visible">
+    <Card
+      hover
+      className="flex h-full w-full min-w-0 flex-col relative overflow-visible"
+    >
       {/* Bookmark Button */}
       <BookmarkButton uniId={uni.id} uniName={uni.shortName || uni.name} />
 
-      {/* Top Badges: Group + Eligibility */}
+      {/* Top Badges: Group + GPA / Eligibility */}
       <div className="flex flex-wrap items-center gap-1.5 pr-10 mb-3">
         <Badge tone="info" icon={GraduationCap}>
           {group}
         </Badge>
         <Badge
-          tone={isEligible ? "success" : isBelowGpa ? "danger" : "warning"}
-          icon={isEligible ? CheckCircle2 : AlertCircle}
+          tone={
+            isEligible || isMinGpaLabel
+              ? "success"
+              : isBelowGpa
+                ? "danger"
+                : "warning"
+          }
+          icon={isEligible || isMinGpaLabel ? CheckCircle2 : AlertCircle}
         >
           {eligibility.status}
         </Badge>
@@ -75,7 +85,7 @@ export function MatchedProgramCard({ item }) {
         </div>
       </div>
 
-      {/* Fee & Credit Box (Directly visible on Card!) */}
+      {/* Fee & Credit Box (Directly visible on Card) */}
       <div className="rounded-xl bg-surface-muted/70 border border-line p-3.5 mb-3 space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs text-content-muted flex items-center gap-1.5">

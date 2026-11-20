@@ -4,7 +4,7 @@ import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import Home from "@/pages/Home/Home";
 import FindResults from "@/pages/FindResults";
 import UniversityDetails from "@/pages/UniversityDetails";
-import ComingSoon from "@/pages/ComingSoon";
+import DepartmentDetails from "@/pages/DepartmentDetails";
 import NotFound from "@/pages/NotFound";
 
 import Login from "@/pages/Login";
@@ -19,8 +19,6 @@ import Contact from "@/pages/Contact";
 import FAQ from "@/pages/FAQ";
 import Privacy from "@/pages/Privacy";
 
-const stub = (props) => <ComingSoon {...props} />;
-
 export default function AppRoutes() {
   return (
     <Routes>
@@ -29,6 +27,7 @@ export default function AppRoutes() {
         <Route index element={<Home />} />
         <Route path="find" element={<FindResults />} />
         <Route path="university/:id" element={<UniversityDetails />} />
+        <Route path="department/:id" element={<DepartmentDetails />} />
         <Route path="login" element={<Login />} />
         <Route path="signup" element={<Signup />} />
         <Route path="compare" element={<Compare />} />
@@ -47,11 +46,7 @@ export default function AppRoutes() {
           <Route path="admin" element={<AdminDashboard />} />
         </Route>
 
-        {/* Remaining Stub */}
-        <Route
-          path="department/:id"
-          element={stub({ title: "Department Details", phase: "Phase 3" })}
-        />
+        {/* 404 Fallback */}
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

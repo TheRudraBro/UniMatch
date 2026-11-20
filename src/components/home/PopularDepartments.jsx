@@ -1,9 +1,9 @@
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import Section from '@/components/common/Section';
-import SectionHeading from '@/components/common/SectionHeading';
-import Icon from '@/components/common/Icon';
-import { popularDepartments } from '@/data/seedDepartments';
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import Section from "@/components/common/Section";
+import SectionHeading from "@/components/common/SectionHeading";
+import Icon from "@/components/common/Icon";
+import { popularDepartments } from "@/data/seedDepartments";
 
 export function PopularDepartments() {
   return (
@@ -20,11 +20,11 @@ export function PopularDepartments() {
             key={d.id}
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-60px' }}
+            viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.35, delay: (i % 4) * 0.05 }}
           >
             <Link
-              to={`/find?department=${d.id}`}
+              to={`/department/${d.id}`}
               className="card-base group flex h-full flex-col gap-3 p-5 transition hover:-translate-y-1 hover:border-brand-500/40 hover:shadow-lift"
             >
               <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-500/10 text-brand-600 transition group-hover:scale-110 dark:text-brand-300">
