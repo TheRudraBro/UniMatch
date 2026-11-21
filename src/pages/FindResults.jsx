@@ -21,7 +21,7 @@ export default function FindResults() {
   const initialQuery = searchParams.get("q") || "";
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [deptDivisionFilter, setDeptDivisionFilter] = useState("");
-  const [deptSortBy, setDeptSortBy] = useState("cost-asc");
+  const [sortBy, setSortBy] = useState("default");
 
   // Quick Search parameters from URL
   const sscGpa = searchParams.get("sscGpa");
@@ -32,7 +32,7 @@ export default function FindResults() {
   const division = searchParams.get("division");
 
   const isQuickMatchMode = Boolean(
-    background || minBudget || maxBudget || division || sscGpa || hscGpa
+    background || minBudget || maxBudget || division || sscGpa || hscGpa,
   );
 
   useEffect(() => {
@@ -62,6 +62,29 @@ export default function FindResults() {
     searchQuery,
   ]);
 
+  // Apply Sort By (Default / Cost Low to High / Cost High to Low) for Quick Match
+  const sortedQuickMatchResults = useMemo(() => {
+    if (sortBy === "default") return quickMatchResults;
+
+    const list = [...quickMatchResults];
+    if (sortBy === "cost-asc") {
+      list.sort((a, b) => {
+        if (a.numericCost == null && b.numericCost == null) return 0;
+        if (a.numericCost == null) return 1;
+        if (b.numericCost == null) return -1;
+        return a.numericCost - b.numericCost;
+      });
+    } else if (sortBy === "cost-desc") {
+      list.sort((a, b) => {
+        if (a.numericCost == null && b.numericCost == null) return 0;
+        if (a.numericCost == null) return 1;
+        if (b.numericCost == null) return -1;
+        return b.numericCost - a.numericCost;
+      });
+    }
+    return list;
+  }, [quickMatchResults, sortBy]);
+
   // Mode 2: Header / Hero Search Bar (Smart detection: Department vs University/City)
   const keywordDeptSearch = useMemo(() => {
     if (isQuickMatchMode || !searchQuery.trim()) {
@@ -73,26 +96,31 @@ export default function FindResults() {
   const sortedKeywordDeptResults = useMemo(() => {
     if (!keywordDeptSearch.isDepartmentSearch) return [];
     const list = [...keywordDeptSearch.results];
-    if (deptSortBy === "cost-desc") {
+    if (sortBy === "cost-asc") {
+      list.sort((a, b) => {
+        if (a.numericCost == null && b.numericCost == null) return 0;
+        if (a.numericCost == null) return 1;
+        if (b.numericCost == null) return -1;
+        return a.numericCost - b.numericCost;
+      });
+    } else if (sortBy === "cost-desc") {
       list.sort((a, b) => {
         if (a.numericCost == null && b.numericCost == null) return 0;
         if (a.numericCost == null) return 1;
         if (b.numericCost == null) return -1;
         return b.numericCost - a.numericCost;
       });
-    } else if (deptSortBy === "name-asc") {
-      list.sort((a, b) => a.university.name.localeCompare(b.university.name));
     }
     return list;
-  }, [keywordDeptSearch, deptSortBy]);
+  }, [keywordDeptSearch, sortBy]);
 
   const showProgramCards =
     isQuickMatchMode || keywordDeptSearch.isDepartmentSearch;
   const programCardsList = isQuickMatchMode
-    ? quickMatchResults
+    ? sortedQuickMatchResults
     : sortedKeywordDeptResults;
 
-  // Mode 3: Normal University Directory Mode (when searching University Name or City)
+  // Mode 3: Normal University Directory Mode
   const filteredUniversities = useMemo(() => {
     if (showProgramCards) return [];
     if (!searchQuery.trim()) return seedUniversities;
@@ -116,9 +144,20 @@ export default function FindResults() {
     });
   }, [showProgramCards, searchQuery]);
 
+  const handleQuickDivisionChange = (newDiv) => {
+    const next = new URLSearchParams(searchParams);
+    if (newDiv) {
+      next.set("division", newDiv);
+    } else {
+      next.delete("division");
+    }
+    setSearchParams(next);
+  };
+
   const handleResetAll = () => {
     setSearchQuery("");
     setDeptDivisionFilter("");
+    setSortBy("default");
     setSearchParams({});
   };
 
@@ -129,22 +168,22 @@ export default function FindResults() {
           isQuickMatchMode
             ? "Smart Match Results"
             : keywordDeptSearch.isDepartmentSearch
-            ? "Department Search"
-            : "Directory"
+              ? "Department Search"
+              : "Directory"
         }
         title={
           isQuickMatchMode
             ? "Matched Departments & Universities"
             : keywordDeptSearch.isDepartmentSearch
-            ? `Universities Offering "${searchQuery.trim()}"`
-            : "Find Universities"
+              ? `Universities Offering "${searchQuery.trim()}"`
+              : "Find Universities"
         }
         subtitle={
           isQuickMatchMode
-            ? "Showing undergraduate departments matching your academic group, GPA, location, and budget."
+            ? "Showing undergraduate departments matching your academic group, budget, and preferences."
             : keywordDeptSearch.isDepartmentSearch
-            ? "Compare total degree cost, credit hours, and minimum GPA across universities offering this department."
-            : "Search by university name, department (e.g. CSE, BBA, Pharmacy), or city."
+              ? "Compare total degree cost, credit hours, and minimum GPA across universities offering this department."
+              : "Search by university name, department (e.g. CSE, BBA, Pharmacy), or city."
         }
       />
 
@@ -153,18 +192,23 @@ export default function FindResults() {
         <div className="max-w-5xl mx-auto mt-8 card-base p-4 sm:p-5 bg-brand-500/5 border-brand-500/20 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="inline-flex items-center gap-1.5 font-semibold text-content mr-1">
-              <SlidersHorizontal className="h-4 w-4 text-brand-500" /> Your Profile:
+              <SlidersHorizontal className="h-4 w-4 text-brand-500" /> Your
+              Criteria:
             </span>
             {sscGpa && <Badge tone="info">SSC: {sscGpa}</Badge>}
             {hscGpa && <Badge tone="info">HSC: {hscGpa}</Badge>}
             {background && <Badge tone="info">Group: {background}</Badge>}
             {(minBudget || maxBudget) && (
               <Badge tone="warning">
-                Budget: {formatBDT(Number(minBudget || 0))} –{" "}
-                {formatBDT(Number(maxBudget || 0))}
+                Budget:{" "}
+                {minBudget
+                  ? `${formatBDT(Number(minBudget))} – ${formatBDT(Number(maxBudget || 0))}`
+                  : `Up to ${formatBDT(Number(maxBudget))}`}
               </Badge>
             )}
-            {division && <Badge tone="info">Division: {division}</Badge>}
+            {division && division !== "All" && (
+              <Badge tone="info">Division: {division}</Badge>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -210,12 +254,25 @@ export default function FindResults() {
         </div>
       </div>
 
-      {/* Extra Division & Cost Sort Controls when searching a Department from Header/Hero */}
-      {!isQuickMatchMode && keywordDeptSearch.isDepartmentSearch && (
+      {/* Filter & Sort Controls (For Quick Search & Department Search) */}
+      {showProgramCards && (
         <div className="max-w-5xl mx-auto mb-6 grid gap-4 sm:grid-cols-2">
           <Select
-            value={deptDivisionFilter}
-            onChange={(e) => setDeptDivisionFilter(e.target.value)}
+            aria-label="Filter by Division"
+            value={
+              isQuickMatchMode
+                ? division === "All"
+                  ? ""
+                  : division || ""
+                : deptDivisionFilter
+            }
+            onChange={(e) => {
+              if (isQuickMatchMode) {
+                handleQuickDivisionChange(e.target.value);
+              } else {
+                setDeptDivisionFilter(e.target.value);
+              }
+            }}
           >
             <option value="">All Divisions</option>
             {DIVISIONS.map((div) => (
@@ -226,12 +283,13 @@ export default function FindResults() {
           </Select>
 
           <Select
-            value={deptSortBy}
-            onChange={(e) => setDeptSortBy(e.target.value)}
+            aria-label="Sort results"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
           >
-            <option value="cost-asc">Sort: Lowest Total Cost First</option>
-            <option value="cost-desc">Sort: Highest Total Cost First</option>
-            <option value="name-asc">Sort: University Name (A–Z)</option>
+            <option value="default">Sort by: Default</option>
+            <option value="cost-asc">Sort by: Cost Low to High</option>
+            <option value="cost-desc">Sort by: Cost High to Low</option>
           </Select>
         </div>
       )}
