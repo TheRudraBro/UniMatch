@@ -1,8 +1,8 @@
 // src/data/seedUniversities.js
 
 import { universities, programmes } from "./unimatchData";
+import { universityWebsites } from "./universityWebsites";
 
-// ম্যানুয়ালি শর্ট ফর্মগুলোর লিস্ট (যেগুলোর নাম অটোমেটিকভাবে ঠিকমতো আসছে না, সেগুলো এখানে দিন)
 const customShortNames = {
   "Ahsanullah University of Science and Technology": "AUST",
   "American International University-Bangladesh": "AIUB",
@@ -11,14 +11,11 @@ const customShortNames = {
   "East West University": "EWU",
   "Daffodil International University": "DIU",
   "Independent University, Bangladesh": "IUB",
-  // আপনার প্রয়োজন মতো বাকি ইউনিভার্সিটির শর্ট নেম এখানে অ্যাড করতে পারেন
 };
 
 export const seedUniversities = universities.map((u) => {
-  // প্রথমে চেক করবে কাস্টম লিস্টে নাম আছে কি না
   let finalShortName = customShortNames[u.name];
 
-  // যদি কাস্টম লিস্টে না থাকে, তখন আগের লজিক দিয়ে বানাবে
   if (!finalShortName) {
     finalShortName =
       u.name.match(/\(([^)]+)\)/)?.[1] ||
@@ -33,12 +30,12 @@ export const seedUniversities = universities.map((u) => {
   return {
     id: u.id,
     name: u.name,
-    shortName: finalShortName, // এখানে শর্ট নেমটি সেট হবে
+    shortName: finalShortName,
     division: u.division,
     city: u.district,
     address: u.area,
-    website: "",
-    sourceUrl: "",
+    website: universityWebsites[u.id] || "",
+    sourceUrl: universityWebsites[u.id] || "",
     established: null,
     featured: true,
     description: `${u.name} — ${u.district}, Bangladesh. ${u.programmeRows} programme fee records are included in the supplied dataset.`,
@@ -50,7 +47,7 @@ export const seedUniversities = universities.map((u) => {
     status: "published",
     rating: null,
     totalTuitionRange: "See programme-wise fees",
-    lastVerifiedAt: "2026-11-16",
+    lastVerifiedAt: "2026-11-22",
     ugcCaution: u.ugcCaution,
   };
 });

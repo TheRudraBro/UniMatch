@@ -4,6 +4,7 @@ import Section from "@/components/common/Section";
 import Badge from "@/components/common/Badge";
 import { universities, admissionRequirements } from "@/data/unimatchData";
 import { getProgrammeRows, getRequirements } from "@/utils/admission";
+import { getUniversityWebsite } from "@/data/universityWebsites";
 
 export default function UniversityDetails() {
   const { id } = useParams();
@@ -22,6 +23,8 @@ export default function UniversityDetails() {
 
   const rows = getProgrammeRows(uni.name);
   const reqs = admissionRequirements.filter((r) => r.university === uni.name);
+  const { url: websiteUrl } = getUniversityWebsite(uni);
+
   return (
     <Section>
       <Link
@@ -31,16 +34,30 @@ export default function UniversityDetails() {
         <ArrowLeft className="h-4 w-4" /> Back to search
       </Link>
       <div className="card-base p-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-300">
-          Private university · Bangladesh
-        </p>
-        <h1 className="mt-2 text-2xl font-bold text-content sm:text-3xl">
-          {uni.name}
-        </h1>
-        <p className="mt-3 flex items-center gap-2 text-sm text-content-muted">
-          <MapPin className="h-4 w-4" />
-          {uni.district}, {uni.division} Division
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-300">
+              Private university · Bangladesh
+            </p>
+            <h1 className="mt-2 text-2xl font-bold text-content sm:text-3xl">
+              {uni.name}
+            </h1>
+            <p className="mt-3 flex items-center gap-2 text-sm text-content-muted">
+              <MapPin className="h-4 w-4" />
+              {uni.district}, {uni.division} Division
+            </p>
+          </div>
+
+          <a
+            href={websiteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
+          >
+            Official Website <ExternalLink className="h-4 w-4" />
+          </a>
+        </div>
+
         <div className="mt-4 flex flex-wrap gap-2">
           <Badge tone="info">{rows.length} programme records</Badge>
           <Badge tone="warning">Confirm current fees & UGC status</Badge>
