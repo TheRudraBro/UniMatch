@@ -14,9 +14,12 @@ import { FormField, Input, Select } from "@/components/common/Field";
 import UniversityCard from "@/components/common/UniversityCard";
 import { seedUniversities } from "@/data/seedUniversities";
 import { seedInternationalUniversities } from "@/data/seedInternational";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
 export default function UserDashboard() {
+  const { profile: authProfile, updateUserProfile } = useAuth();
+
   const [savedUnis, setSavedUnis] = useState([]);
   const [testHistory, setTestHistory] = useState([]);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -27,6 +30,12 @@ export default function UserDashboard() {
     hscGpa: "4.83",
     targetSubject: "CSE / Engineering",
   });
+
+  useEffect(() => {
+    if (authProfile) {
+      setProfile(authProfile);
+    }
+  }, [authProfile]);
 
   const loadDashboardData = () => {
     // Saved Universities
@@ -45,9 +54,11 @@ export default function UserDashboard() {
     );
     setTestHistory(history);
 
-    // Profile
+    // Fallback Profile from localStorage
     const savedProfile = localStorage.getItem("unimatch_profile");
-    if (savedProfile) setProfile(JSON.parse(savedProfile));
+    if (savedProfile && !authProfile) {
+      setProfile(JSON.parse(savedProfile));
+    }
   };
 
   useEffect(() => {
@@ -58,13 +69,17 @@ export default function UserDashboard() {
         "unimatch_bookmark_updated",
         loadDashboardData,
       );
-  }, []);
+  }, [authProfile]);
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    localStorage.setItem("unimatch_profile", JSON.stringify(profile));
-    setIsProfileOpen(false);
-    toast.success("Profile updated successfully!");
+    try {
+      await updateUserProfile(profile);
+      setIsProfileOpen(false);
+      toast.success("Profile updated successfully!");
+    } catch {
+      toast.error("Could not update profile.");
+    }
   };
 
   const clearHistory = () => {
@@ -157,6 +172,7 @@ export default function UserDashboard() {
           </h2>
           {testHistory.length > 0 && (
             <button
+              type="button"
               onClick={clearHistory}
               className="text-xs text-red-500 hover:underline flex items-center gap-1"
             >
@@ -258,6 +274,7 @@ export default function UserDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="card-base w-full max-w-md p-6 sm:p-8 relative shadow-2xl">
             <button
+              type="button"
               onClick={() => setIsProfileOpen(false)}
               className="absolute top-4 right-4 p-2 rounded-lg hover:bg-surface-muted text-content-muted"
             >

@@ -1,15 +1,22 @@
 import { Navigate, Outlet } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 
 export default function ProtectedRoute({ allowedRole }) {
-  const userRole = localStorage.getItem('unimatch_role');
+  const { role, loading } = useAuth();
 
-  if (!userRole) {
-    // লগইন করা না থাকলে লগইন পেজে পাঠাবে
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center text-sm text-content-muted">
+        Checking session...
+      </div>
+    );
+  }
+
+  if (!role) {
     return <Navigate to="/login" replace />;
   }
 
-  // যদি নির্দিষ্ট রোলের পারমিশন লাগে (যেমন শুধু এডমিন)
-  if (allowedRole && userRole !== allowedRole) {
+  if (allowedRole && role !== allowedRole) {
     return <Navigate to="/" replace />;
   }
 

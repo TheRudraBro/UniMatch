@@ -1,6 +1,7 @@
 import { BrowserRouter } from "react-router-dom";
 import { Toaster } from "sonner";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
+import { AuthProvider } from "@/context/AuthContext";
 import AppRoutes from "@/routes/AppRoutes";
 import PromoModal from "@/components/common/PromoModal";
 
@@ -18,11 +19,13 @@ function AppToaster() {
 export default function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter>
-        <AppRoutes />
-        <PromoModal />
-        <AppToaster />
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
+          <PromoModal />
+          <AppToaster />
+        </BrowserRouter>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

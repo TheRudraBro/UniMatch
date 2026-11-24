@@ -1,32 +1,41 @@
-// src/pages/Signup.jsx
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import Section from "@/components/common/Section";
 import { FormField, Input } from "@/components/common/Field";
 import Button from "@/components/common/Button";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Signup() {
   const navigate = useNavigate();
+  const { signupWithEmail } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
   });
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
     if (formData.password.length < 6) {
       toast.error("Password must be at least 6 characters.");
       return;
     }
-    toast.success("Account created successfully! (Demo)");
-    navigate("/dashboard");
+    setSubmitting(true);
+    try {
+      await signupWithEmail(formData);
+      toast.success("Account created successfully!");
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      toast.error(err?.message || "Could not create account.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <Section className="flex min-h-[80vh] items-center justify-center">
-      {/* mx-auto যোগ করা হয়েছে যাতে ডেস্কটপে কার্ড একদম সেন্টারে থাকে */}
       <div className="card-base w-full max-w-md p-8 shadow-lift mx-auto">
         <h1 className="text-2xl font-bold text-content text-center mb-2">
           Create an Account
@@ -40,7 +49,7 @@ export default function Signup() {
             <Input
               id="name"
               type="text"
-              placeholder="John Doe"
+              placeholder="Your full name"
               required
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
@@ -72,8 +81,13 @@ export default function Signup() {
             />
           </FormField>
 
-          <Button type="submit" className="w-full mt-4" size="lg">
-            Sign Up
+          <Button
+            type="submit"
+            className="w-full mt-4"
+            size="lg"
+            disabled={submitting}
+          >
+            {submitting ? "Creating account..." : "Sign Up"}
           </Button>
         </form>
 

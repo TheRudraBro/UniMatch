@@ -1,41 +1,61 @@
-// src/pages/Login.jsx
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import Section from "@/components/common/Section";
 import { FormField, Input } from "@/components/common/Field";
 import Button from "@/components/common/Button";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { role, loginWithEmail, loginWithGoogle, isFirebaseConfigured } =
+    useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const userRole = localStorage.getItem("unimatch_role");
-    if (userRole === "admin") navigate("/admin", { replace: true });
-    else if (userRole === "user") navigate("/dashboard", { replace: true });
-  }, [navigate]);
+    if (role === "admin") navigate("/admin", { replace: true });
+    else if (role === "user") navigate("/dashboard", { replace: true });
+  }, [role, navigate]);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (email === "admin@unimatch.com" && password === "admin123") {
-      localStorage.setItem("unimatch_role", "admin");
-      toast.success("Welcome back, Admin!");
-      navigate("/admin", { replace: true });
-    } else if (email && password.length >= 6) {
-      localStorage.setItem("unimatch_role", "user");
-      toast.success("Logged in successfully! (Demo)");
-      navigate("/dashboard", { replace: true });
-    } else {
-      toast.error("Invalid credentials. (Hint: password must be 6+ chars)");
+    setSubmitting(true);
+    try {
+      const res = await loginWithEmail(email, password);
+      toast.success(
+        res.role === "admin"
+          ? "Welcome back, Admin!"
+          : "Logged in successfully!",
+      );
+      navigate(res.role === "admin" ? "/admin" : "/dashboard", {
+        replace: true,
+      });
+    } catch (err) {
+      toast.error(err?.message || "Invalid email or password.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setSubmitting(true);
+    try {
+      const res = await loginWithGoogle();
+      toast.success("Signed in with Google!");
+      navigate(res.role === "admin" ? "/admin" : "/dashboard", {
+        replace: true,
+      });
+    } catch (err) {
+      toast.error(err?.message || "Google sign-in failed.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <Section className="flex min-h-[70vh] items-center justify-center">
-      {/* mx-auto যোগ করা হয়েছে যাতে ডেস্কটপে কার্ড একদম সেন্টারে থাকে */}
       <div className="card-base w-full max-w-md p-8 mx-auto">
         <h1 className="text-2xl font-bold text-content text-center mb-6">
           Welcome Back
@@ -64,10 +84,28 @@ export default function Login() {
             />
           </FormField>
 
-          <Button type="submit" className="w-full mt-2" size="lg">
-            Log In
+          <Button
+            type="submit"
+            className="w-full mt-2"
+            size="lg"
+            disabled={submitting}
+          >
+            {submitting ? "Signing in..." : "Log In"}
           </Button>
         </form>
+
+        {isFirebaseConfigured && (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full mt-3"
+            size="lg"
+            onClick={handleGoogleLogin}
+            disabled={submitting}
+          >
+            Continue with Google
+          </Button>
+        )}
 
         <div className="mt-6 text-center text-sm text-content-muted">
           <p>
@@ -79,13 +117,12 @@ export default function Login() {
               Sign up
             </Link>
           </p>
-          <div className="mt-4 p-3 bg-brand-500/10 rounded-lg text-xs text-brand-600 dark:text-brand-300 text-left">
-            <strong>Demo Hints:</strong>
-            <ul className="list-disc list-inside mt-1">
-              <li>Admin: admin@unimatch.com / admin123</li>
-              <li>User: Any email / any 6+ char password</li>
-            </ul>
-          </div>
+          {!isFirebaseConfigured && (
+            <div className="mt-4 p-3 bg-brand-500/10 rounded-lg text-xs text-brand-600 dark:text-brand-300 text-left">
+              <strong>Local Fallback Active:</strong> Add Firebase keys in{" "}
+              <code>.env</code> for live cloud auth.
+            </div>
+          )}
         </div>
       </div>
     </Section>
