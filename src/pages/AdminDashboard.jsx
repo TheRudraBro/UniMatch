@@ -7,11 +7,13 @@ import {
   PlusCircle,
   X,
   Save,
+  Trash2,
 } from "lucide-react";
 import {
   collection,
   addDoc,
   updateDoc,
+  deleteDoc,
   doc,
   onSnapshot,
   serverTimestamp,
@@ -34,42 +36,44 @@ const EMPTY_FORM = {
   requirements: "",
 };
 
+const INITIAL_RECORDS = [
+  {
+    id: "seed-1",
+    universityName: "BRAC University",
+    division: "Dhaka",
+    department: "BSc CSE",
+    totalCredits: "136",
+    perCreditFee: "৳ 6,500",
+    totalDegreeCost: "৳ 1,003,400",
+    requirements: "SSC & HSC GPA requirements apply per circular.",
+  },
+  {
+    id: "seed-2",
+    universityName: "North South University",
+    division: "Dhaka",
+    department: "BBA",
+    totalCredits: "120",
+    perCreditFee: "৳ 6,500",
+    totalDegreeCost: "৳ 850,000+",
+    requirements: "Admission test & GPA criteria apply.",
+  },
+  {
+    id: "seed-3",
+    universityName: "Ahsanullah University of Science and Technology",
+    division: "Dhaka",
+    department: "BSc CSE",
+    totalCredits: "160",
+    perCreditFee: "Program-based",
+    totalDegreeCost: "৳ 800,000+",
+    requirements: "Science background with Math & Physics.",
+  },
+];
+
 export default function AdminDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState("Add");
   const [formState, setFormState] = useState(EMPTY_FORM);
-  const [records, setRecords] = useState([
-    {
-      id: "seed-1",
-      universityName: "BRAC University",
-      division: "Dhaka",
-      department: "BSc CSE",
-      totalCredits: "136",
-      perCreditFee: "৳ 6,500",
-      totalDegreeCost: "৳ 1,003,400",
-      requirements: "SSC & HSC GPA requirements apply per circular.",
-    },
-    {
-      id: "seed-2",
-      universityName: "North South University",
-      division: "Dhaka",
-      department: "BBA",
-      totalCredits: "120",
-      perCreditFee: "৳ 6,500",
-      totalDegreeCost: "৳ 850,000+",
-      requirements: "Admission test & GPA criteria apply.",
-    },
-    {
-      id: "seed-3",
-      universityName: "Ahsanullah University of Science and Technology",
-      division: "Dhaka",
-      department: "BSc CSE",
-      totalCredits: "160",
-      perCreditFee: "Program-based",
-      totalDegreeCost: "৳ 800,000+",
-      requirements: "Science background with Math & Physics.",
-    },
-  ]);
+  const [records, setRecords] = useState(INITIAL_RECORDS);
 
   useEffect(() => {
     if (!isFirebaseConfigured || !db) return;
@@ -78,6 +82,8 @@ export default function AdminDashboard() {
       if (!snap.empty) {
         const cloudItems = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setRecords(cloudItems);
+      } else {
+        setRecords([]);
       }
     });
 
@@ -127,6 +133,19 @@ export default function AdminDashboard() {
       requirements: item.requirements || "",
     });
     setIsModalOpen(true);
+  };
+
+  const handleDelete = async (item) => {
+    try {
+      if (isFirebaseConfigured && db && !String(item.id).startsWith("seed-")) {
+        await deleteDoc(doc(db, "university_records", item.id));
+      } else {
+        setRecords((prev) => prev.filter((r) => r.id !== item.id));
+      }
+      toast.success("Record deleted.");
+    } catch (err) {
+      toast.error(err?.message || "Failed to delete record.");
+    }
   };
 
   const handleSave = async (e) => {
@@ -239,7 +258,7 @@ export default function AdminDashboard() {
                   <td className="px-4 py-4 font-semibold text-brand-600 dark:text-brand-400">
                     {item.totalDegreeCost || "—"}
                   </td>
-                  <td className="px-4 py-4 text-right">
+                  <td className="px-4 py-4 text-right space-x-1">
                     <Button
                       onClick={() => handleOpenEdit(item)}
                       variant="ghost"
@@ -247,6 +266,14 @@ export default function AdminDashboard() {
                       className="text-brand-600"
                     >
                       Edit
+                    </Button>
+                    <Button
+                      onClick={() => handleDelete(item)}
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 hover:text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </td>
                 </tr>

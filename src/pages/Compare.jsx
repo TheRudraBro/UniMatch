@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import Section from "@/components/common/Section";
 import SectionHeading from "@/components/common/SectionHeading";
 import Button from "@/components/common/Button";
-import Badge from "@/components/common/Badge";
 import { programmes, universities } from "@/data/unimatchData";
 import { getRequirements } from "@/utils/admission";
 
@@ -27,7 +26,7 @@ export default function Compare() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [dropdownRef]);
 
-  // ইউজারের সার্চ অনুযায়ী প্রোগ্রাম ফিল্টার করা
+  // ইউজারের সার্চ অনুযায়ী প্রোগ্রাম ফিল্টার করা
   const filteredProgrammes = useMemo(() => {
     // যদি ইউজার অলরেডি ড্রপডাউন থেকে সিলেক্ট করে থাকে, তবে সব লিস্ট দেখানোর দরকার নেই
     if (!searchTerm.trim() || pendingSelection) return programmes;
@@ -40,7 +39,7 @@ export default function Compare() {
     );
   }, [searchTerm, pendingSelection]);
 
-  // ফিল্টার করা প্রোগ্রামগুলোকে ইউনিভার্সিটির নাম অনুযায়ী গ্রুপ করা
+  // ফিল্টার করা প্রোগ্রামগুলোকে ইউনিভার্সিটির নাম অনুযায়ী গ্রুপ করা
   const groupedProgrammes = useMemo(() => {
     const groups = {};
     filteredProgrammes.forEach((p) => {
@@ -75,7 +74,7 @@ export default function Compare() {
     ) {
       setSelectedIds([...selectedIds, pendingSelection]);
       setPendingSelection(null);
-      setSearchTerm(""); // ইনপুট ক্লিয়ার করে দেওয়া
+      setSearchTerm(""); // ইনপুট ক্লিয়ার করে দেওয়া
     }
   };
 
@@ -192,7 +191,13 @@ export default function Compare() {
       {/* Comparison Grid */}
       {selectedData.length > 0 ? (
         <div
-          className={`mt-12 grid gap-6 md:grid-cols-${selectedData.length === 1 ? "1 max-w-md mx-auto" : selectedData.length}`}
+          className={`mt-12 grid gap-6 ${
+            selectedData.length === 1
+              ? "grid-cols-1 max-w-md mx-auto"
+              : selectedData.length === 2
+                ? "grid-cols-1 md:grid-cols-2"
+                : "grid-cols-1 md:grid-cols-3"
+          }`}
         >
           {selectedData.map((data) => (
             <div

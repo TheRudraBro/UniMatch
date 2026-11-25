@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   BookOpen,
   Calculator,
@@ -19,6 +19,7 @@ import {
   getAllQuestionsForStudy,
   fullQuestionBank,
 } from "@/data/quizData";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
 const CATEGORIES = [
@@ -49,7 +50,9 @@ const CATEGORIES = [
 ];
 
 export default function Preparation() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { role, loading, saveTestResult } = useAuth();
+  const isAuthenticated = Boolean(role);
+
   const [testState, setTestState] = useState("selection");
   const [selectedCategory, setSelectedCategory] = useState("");
 
@@ -60,43 +63,43 @@ export default function Preparation() {
   const [selectedAnswer, setSelectedAnswer] = useState("");
   const [isAnswerChecked, setIsAnswerChecked] = useState(false);
 
-  useEffect(() => {
-    const role = localStorage.getItem("unimatch_role");
-    if (role) setIsAuthenticated(true);
-  }, []);
+  const finishAndSaveTest = useCallback(
+    async (finalScore) => {
+      const newEntry = {
+        id: Date.now(),
+        category: selectedCategory,
+        score: finalScore,
+        total: questions.length,
+        date: new Date().toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        }),
+      };
 
-  // টেস্টের রেজাল্ট LocalStorage-এ সেভ করার ফাংশন
-  const finishAndSaveTest = (finalScore) => {
-    const history = JSON.parse(
-      localStorage.getItem("unimatch_test_history") || "[]",
-    );
-    const newEntry = {
-      id: Date.now(),
-      category: selectedCategory,
-      score: finalScore,
-      total: questions.length,
-      date: new Date().toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }),
-    };
-    localStorage.setItem(
-      "unimatch_test_history",
-      JSON.stringify([newEntry, ...history]),
-    );
-    setTestState("result");
-  };
+      try {
+        await saveTestResult(newEntry);
+      } catch (err) {
+        console.error("Failed to sync test score:", err);
+      }
+      setTestState("result");
+    },
+    [selectedCategory, questions.length, saveTestResult],
+  );
 
   useEffect(() => {
     let timer;
     if (testState === "playing" && timeLeft > 0) {
       timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-    } else if (testState === "playing" && timeLeft === 0) {
+    } else if (
+      testState === "playing" &&
+      timeLeft === 0 &&
+      questions.length > 0
+    ) {
       finishAndSaveTest(score);
     }
     return () => clearTimeout(timer);
-  }, [timeLeft, testState]);
+  }, [timeLeft, testState, score, questions.length, finishAndSaveTest]);
 
   const startStudy = (category) => {
     setSelectedCategory(CATEGORIES.find((c) => c.id === category).title);
@@ -158,7 +161,11 @@ export default function Preparation() {
         subtitle="Study over 500+ premium questions per department, then test your skills without facing repeated questions."
       />
 
-      {!isAuthenticated ? (
+      {loading ? (
+        <div className="mt-12 text-center text-sm text-content-muted">
+          Checking session...
+        </div>
+      ) : !isAuthenticated ? (
         <div className="mt-12 max-w-lg mx-auto card-base p-10 text-center shadow-lift border-t-4 border-t-amber-500">
           <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 mb-6">
             <Lock className="w-8 h-8" />
@@ -263,7 +270,11 @@ export default function Preparation() {
                       {q.o.map((opt, oIdx) => (
                         <div
                           key={oIdx}
-                          className={`p-2 rounded-lg ${opt === q.a ? "bg-emerald-500/10 text-emerald-700 font-bold border border-emerald-500/30" : "bg-surface border border-line"}`}
+                          className={`p-2 rounded-lg ${
+                            opt === q.a
+                              ? "bg-emerald-500/10 text-emerald-700 font-bold border border-emerald-500/30"
+                              : "bg-surface border border-line"
+                          }`}
                         >
                           {opt}{" "}
                           {opt === q.a && (
@@ -286,7 +297,9 @@ export default function Preparation() {
                   {questions.length}
                 </div>
                 <div
-                  className={`flex items-center gap-2 font-mono font-bold text-lg ${timeLeft < 60 ? "text-red-500" : "text-content"}`}
+                  className={`flex items-center gap-2 font-mono font-bold text-lg ${
+                    timeLeft < 60 ? "text-red-500" : "text-content"
+                  }`}
                 >
                   <Clock className="w-5 h-5" /> {formatTime(timeLeft)}
                 </div>
@@ -322,6 +335,7 @@ export default function Preparation() {
                     return (
                       <button
                         key={i}
+                        type="button"
                         disabled={isAnswerChecked}
                         onClick={() => setSelectedAnswer(opt)}
                         className={`w-full text-left p-4 rounded-xl border-2 transition-all font-medium flex justify-between items-center ${optionStyle}`}

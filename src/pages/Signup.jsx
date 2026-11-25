@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function Signup() {
   const navigate = useNavigate();
-  const { signupWithEmail } = useAuth();
+  const { signupWithEmail, loginWithGoogle, isFirebaseConfigured } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -29,6 +29,21 @@ export default function Signup() {
       navigate("/dashboard", { replace: true });
     } catch (err) {
       toast.error(err?.message || "Could not create account.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    setSubmitting(true);
+    try {
+      const res = await loginWithGoogle();
+      toast.success("Signed in with Google!");
+      navigate(res.role === "admin" ? "/admin" : "/dashboard", {
+        replace: true,
+      });
+    } catch (err) {
+      toast.error(err?.message || "Google sign-in failed.");
     } finally {
       setSubmitting(false);
     }
@@ -90,6 +105,19 @@ export default function Signup() {
             {submitting ? "Creating account..." : "Sign Up"}
           </Button>
         </form>
+
+        {isFirebaseConfigured && (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full mt-3"
+            size="lg"
+            onClick={handleGoogleSignup}
+            disabled={submitting}
+          >
+            Continue with Google
+          </Button>
+        )}
 
         <p className="mt-6 text-center text-sm text-content-muted">
           Already have an account?{" "}

@@ -18,7 +18,12 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
 export default function UserDashboard() {
-  const { profile: authProfile, updateUserProfile } = useAuth();
+  const {
+    profile: authProfile,
+    updateUserProfile,
+    testHistory: authTestHistory,
+    clearTestHistory,
+  } = useAuth();
 
   const [savedUnis, setSavedUnis] = useState([]);
   const [testHistory, setTestHistory] = useState([]);
@@ -37,8 +42,13 @@ export default function UserDashboard() {
     }
   }, [authProfile]);
 
+  useEffect(() => {
+    if (Array.isArray(authTestHistory)) {
+      setTestHistory(authTestHistory);
+    }
+  }, [authTestHistory]);
+
   const loadDashboardData = () => {
-    // Saved Universities
     const savedIds = JSON.parse(
       localStorage.getItem("unimatch_saved_unis") || "[]",
     );
@@ -48,13 +58,13 @@ export default function UserDashboard() {
     ];
     setSavedUnis(allUniversities.filter((uni) => savedIds.includes(uni.id)));
 
-    // Test History
-    const history = JSON.parse(
-      localStorage.getItem("unimatch_test_history") || "[]",
-    );
-    setTestHistory(history);
+    if (!authTestHistory) {
+      const history = JSON.parse(
+        localStorage.getItem("unimatch_test_history") || "[]",
+      );
+      setTestHistory(history);
+    }
 
-    // Fallback Profile from localStorage
     const savedProfile = localStorage.getItem("unimatch_profile");
     if (savedProfile && !authProfile) {
       setProfile(JSON.parse(savedProfile));
@@ -69,7 +79,7 @@ export default function UserDashboard() {
         "unimatch_bookmark_updated",
         loadDashboardData,
       );
-  }, [authProfile]);
+  }, [authProfile, authTestHistory]);
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
@@ -82,10 +92,14 @@ export default function UserDashboard() {
     }
   };
 
-  const clearHistory = () => {
-    localStorage.removeItem("unimatch_test_history");
-    setTestHistory([]);
-    toast.info("Test history cleared.");
+  const handleClearHistory = async () => {
+    try {
+      await clearTestHistory();
+      setTestHistory([]);
+      toast.info("Test history cleared.");
+    } catch {
+      toast.error("Could not clear test history.");
+    }
   };
 
   return (
@@ -110,7 +124,6 @@ export default function UserDashboard() {
         </Button>
       </div>
 
-      {/* Overview Cards */}
       <div className="grid md:grid-cols-3 gap-6 mb-12">
         <div className="card-base p-6 shadow-sm border-brand-500/20">
           <div className="flex items-center gap-3 mb-4">
@@ -164,7 +177,6 @@ export default function UserDashboard() {
         </div>
       </div>
 
-      {/* Recent Mock Test History */}
       <div className="mb-14">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-2xl font-bold text-content flex items-center gap-2">
@@ -173,7 +185,7 @@ export default function UserDashboard() {
           {testHistory.length > 0 && (
             <button
               type="button"
-              onClick={clearHistory}
+              onClick={handleClearHistory}
               className="text-xs text-red-500 hover:underline flex items-center gap-1"
             >
               <Trash2 className="w-3.5 h-3.5" /> Clear History
@@ -237,7 +249,6 @@ export default function UserDashboard() {
         )}
       </div>
 
-      {/* Saved Universities Section */}
       <div>
         <h2 className="text-2xl font-bold text-content mb-6 flex items-center gap-2">
           <Bookmark className="w-5 h-5 text-brand-500 fill-brand-500" /> Your
@@ -269,7 +280,6 @@ export default function UserDashboard() {
         )}
       </div>
 
-      {/* Profile Edit Modal */}
       {isProfileOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="card-base w-full max-w-md p-6 sm:p-8 relative shadow-2xl">

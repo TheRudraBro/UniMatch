@@ -8,18 +8,18 @@ import ThemeToggle from "@/components/common/ThemeToggle";
 import Button from "@/components/common/Button";
 import { navLinks } from "./navLinks";
 import { cn } from "@/utils/cn";
+import { useAuth } from "@/context/AuthContext";
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [userRole, setUserRole] = useState(null);
+  const { role: userRole, logout } = useAuth();
 
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    setUserRole(localStorage.getItem("unimatch_role"));
     setOpen(false);
   }, [location.pathname]);
 
@@ -44,9 +44,8 @@ export function Navbar() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("unimatch_role");
-    setUserRole(null);
+  const handleLogout = async () => {
+    await logout();
     navigate("/login", { replace: true });
   };
 
@@ -64,7 +63,6 @@ export function Navbar() {
           <Logo />
         </Link>
 
-        {/* Desktop links */}
         <div className="hidden items-center gap-1 lg:flex">
           {navLinks.map((link) => (
             <NavLink
@@ -85,7 +83,6 @@ export function Navbar() {
           ))}
         </div>
 
-        {/* Right Action Area */}
         <div className="flex items-center gap-3 shrink-0 flex-nowrap">
           <form
             onSubmit={handleSearchSubmit}
@@ -106,7 +103,6 @@ export function Navbar() {
           <div className="hidden sm:flex items-center gap-2 shrink-0 flex-nowrap">
             {userRole ? (
               <>
-                {/* ড্যাশবোর্ড লিংক (এডমিন হলে /admin, ইউজার হলে /dashboard) */}
                 <Button
                   to={userRole === "admin" ? "/admin" : "/dashboard"}
                   variant="ghost"
@@ -153,7 +149,6 @@ export function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile drawer */}
       <AnimatePresence>
         {open && (
           <motion.div

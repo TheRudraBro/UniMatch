@@ -1,5 +1,11 @@
 // src/context/AuthContext.jsx
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -15,11 +21,18 @@ import {
   updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { auth, db, googleProvider, isFirebaseConfigured } from "@/firebase/config";
+import {
+  auth,
+  db,
+  googleProvider,
+  isFirebaseConfigured,
+} from "@/firebase/config";
 
 const AuthContext = createContext(null);
 
-const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || "admin@unimatch.com").toLowerCase();
+const ADMIN_EMAIL = (
+  import.meta.env.VITE_ADMIN_EMAIL || "admin@unimatch.com"
+).toLowerCase();
 
 const DEFAULT_PROFILE = {
   name: "Student User",
@@ -30,7 +43,9 @@ const DEFAULT_PROFILE = {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [role, setRole] = useState(() => localStorage.getItem("unimatch_role") || null);
+  const [role, setRole] = useState(
+    () => localStorage.getItem("unimatch_role") || null,
+  );
   const [profile, setProfile] = useState(() => {
     try {
       const saved = localStorage.getItem("unimatch_profile");
@@ -42,6 +57,13 @@ export function AuthProvider({ children }) {
   const [savedUnis, setSavedUnis] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("unimatch_saved_unis") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [testHistory, setTestHistory] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("unimatch_test_history") || "[]");
     } catch {
       return [];
     }
@@ -58,13 +80,18 @@ export function AuthProvider({ children }) {
 
     if (!snap.exists()) {
       const initialData = {
-        name: extraName || firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Student User",
+        name:
+          extraName ||
+          firebaseUser.displayName ||
+          firebaseUser.email?.split("@")[0] ||
+          "Student User",
         email: firebaseUser.email || "",
         role: resolvedRole,
         sscGpa: "5.00",
         hscGpa: "4.83",
         targetSubject: "CSE / Engineering",
         savedUniversities: [],
+        testHistory: [],
         createdAt: serverTimestamp(),
       };
       await setDoc(userRef, initialData);
@@ -101,20 +128,36 @@ export function AuthProvider({ children }) {
               targetSubject: userData.targetSubject || "CSE / Engineering",
             };
             setProfile(nextProfile);
-            localStorage.setItem("unimatch_profile", JSON.stringify(nextProfile));
+            localStorage.setItem(
+              "unimatch_profile",
+              JSON.stringify(nextProfile),
+            );
 
             const cloudBookmarks = Array.isArray(userData.savedUniversities)
               ? userData.savedUniversities
               : [];
             setSavedUnis(cloudBookmarks);
-            localStorage.setItem("unimatch_saved_unis", JSON.stringify(cloudBookmarks));
+            localStorage.setItem(
+              "unimatch_saved_unis",
+              JSON.stringify(cloudBookmarks),
+            );
             window.dispatchEvent(new Event("unimatch_bookmark_updated"));
+
+            if (Array.isArray(userData.testHistory)) {
+              setTestHistory(userData.testHistory);
+              localStorage.setItem(
+                "unimatch_test_history",
+                JSON.stringify(userData.testHistory),
+              );
+            }
           }
         } catch (err) {
           console.error("Firestore user sync error:", err);
         }
       } else {
         setUser(null);
+        setRole(null);
+        localStorage.removeItem("unimatch_role");
       }
       setLoading(false);
     });
@@ -132,7 +175,6 @@ export function AuthProvider({ children }) {
       return { role: activeRole };
     }
 
-    // Local fallback when Firebase env is not configured
     if (email === "admin@unimatch.com" && password === "admin123") {
       localStorage.setItem("unimatch_role", "admin");
       setRole("admin");
@@ -166,7 +208,9 @@ export function AuthProvider({ children }) {
 
   const loginWithGoogle = async () => {
     if (!isFirebaseConfigured || !auth) {
-      throw new Error("Configure Firebase credentials in .env to use Google Sign-In.");
+      throw new Error(
+        "Configure Firebase credentials in .env to use Google Sign-In.",
+      );
     }
     const cred = await signInWithPopup(auth, googleProvider);
     const userData = await syncUserDocument(cred.user);
@@ -201,7 +245,9 @@ export function AuthProvider({ children }) {
   };
 
   const toggleBookmarkUni = async (uniId) => {
-    const current = JSON.parse(localStorage.getItem("unimatch_saved_unis") || "[]");
+    const current = JSON.parse(
+      localStorage.getItem("unimatch_saved_unis") || "[]",
+    );
     const exists = current.includes(uniId);
     const nextSaved = exists
       ? current.filter((id) => id !== uniId)
@@ -221,6 +267,34 @@ export function AuthProvider({ children }) {
     return !exists;
   };
 
+  const saveTestResult = async (entry) => {
+    const current = JSON.parse(
+      localStorage.getItem("unimatch_test_history") || "[]",
+    );
+    const nextHistory = [entry, ...current];
+    localStorage.setItem("unimatch_test_history", JSON.stringify(nextHistory));
+    setTestHistory(nextHistory);
+
+    if (isFirebaseConfigured && db && user) {
+      await updateDoc(doc(db, "users", user.uid), {
+        testHistory: nextHistory,
+        updatedAt: serverTimestamp(),
+      });
+    }
+  };
+
+  const clearTestHistory = async () => {
+    localStorage.removeItem("unimatch_test_history");
+    setTestHistory([]);
+
+    if (isFirebaseConfigured && db && user) {
+      await updateDoc(doc(db, "users", user.uid), {
+        testHistory: [],
+        updatedAt: serverTimestamp(),
+      });
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -228,6 +302,7 @@ export function AuthProvider({ children }) {
         role,
         profile,
         savedUnis,
+        testHistory,
         loading,
         isFirebaseConfigured,
         loginWithEmail,
@@ -236,6 +311,8 @@ export function AuthProvider({ children }) {
         logout,
         updateUserProfile,
         toggleBookmarkUni,
+        saveTestResult,
+        clearTestHistory,
       }}
     >
       {children}
