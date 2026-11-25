@@ -1,34 +1,30 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Users,
   Database,
+  Layers,
   ShieldAlert,
   PlusCircle,
   X,
   Save,
   Trash2,
+  Search,
+  RotateCcw,
 } from "lucide-react";
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  serverTimestamp,
-} from "firebase/firestore";
 import Section from "@/components/common/Section";
 import Button from "@/components/common/Button";
 import { FormField, Input, Select } from "@/components/common/Field";
-import { db, isFirebaseConfigured } from "@/firebase/config";
-import { seedUniversities } from "@/data/seedUniversities";
+import { isFirebaseConfigured } from "@/firebase/config";
+import { useUniversityData } from "@/context/UniversityDataContext";
 import { toast } from "sonner";
 
 const EMPTY_FORM = {
   id: null,
+  isNewUniversity: false,
   universityName: "",
   division: "Dhaka",
+  city: "",
+  website: "",
   department: "",
   totalCredits: "",
   perCreditFee: "",
@@ -36,72 +32,79 @@ const EMPTY_FORM = {
   requirements: "",
 };
 
-const INITIAL_RECORDS = [
-  {
-    id: "seed-1",
-    universityName: "BRAC University",
-    division: "Dhaka",
-    department: "BSc CSE",
-    totalCredits: "136",
-    perCreditFee: "৳ 6,500",
-    totalDegreeCost: "৳ 1,003,400",
-    requirements: "SSC & HSC GPA requirements apply per circular.",
-  },
-  {
-    id: "seed-2",
-    universityName: "North South University",
-    division: "Dhaka",
-    department: "BBA",
-    totalCredits: "120",
-    perCreditFee: "৳ 6,500",
-    totalDegreeCost: "৳ 850,000+",
-    requirements: "Admission test & GPA criteria apply.",
-  },
-  {
-    id: "seed-3",
-    universityName: "Ahsanullah University of Science and Technology",
-    division: "Dhaka",
-    department: "BSc CSE",
-    totalCredits: "160",
-    perCreditFee: "Program-based",
-    totalDegreeCost: "৳ 800,000+",
-    requirements: "Science background with Math & Physics.",
-  },
-];
-
 export default function AdminDashboard() {
+  const {
+    seedUniversities,
+    programmes,
+    admissionRequirements,
+    customRecords,
+    deletedUniNames,
+    saveUniversityRecord,
+    deleteUniversityRecord,
+    deleteUniversityCompletely,
+    restoreDeletedUniversities,
+  } = useUniversityData();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState("Add");
   const [formState, setFormState] = useState(EMPTY_FORM);
-  const [records, setRecords] = useState(INITIAL_RECORDS);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!isFirebaseConfigured || !db) return;
-
-    const unsub = onSnapshot(collection(db, "university_records"), (snap) => {
-      if (!snap.empty) {
-        const cloudItems = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setRecords(cloudItems);
-      } else {
-        setRecords([]);
-      }
+  const combinedRows = useMemo(() => {
+    const rows = programmes.map((p) => {
+      const uni = seedUniversities.find((u) => u.name === p.university);
+      const req = admissionRequirements.find(
+        (r) =>
+          r.university === p.university &&
+          (r.applicableProgramme === p.programme ||
+            /general|all ug/i.test(r.applicableProgramme || "")),
+      );
+      return {
+        id: p.adminRecordId || `prog-${p.id}`,
+        adminRecordId: p.adminRecordId || null,
+        universityId: uni?.id || "",
+        universityName: p.university,
+        division: uni?.division || "Dhaka",
+        city: uni?.city || "",
+        website: uni?.website || "",
+        department: p.programme,
+        totalCredits: p.totalCredits || "",
+        perCreditFee: p.perCreditFee || "",
+        totalDegreeCost: p.totalDegreeCost || "",
+        requirements: req?.generalEligibility || uni?.ugcCaution || "",
+        isCustom: Boolean(p.adminRecordId),
+      };
     });
 
-    return () => unsub();
-  }, []);
+    if (!searchQuery.trim()) return rows.slice(0, 60);
+    const q = searchQuery.toLowerCase();
+    return rows.filter(
+      (r) =>
+        r.universityName.toLowerCase().includes(q) ||
+        r.department.toLowerCase().includes(q) ||
+        r.division.toLowerCase().includes(q),
+    );
+  }, [
+    programmes,
+    seedUniversities,
+    admissionRequirements,
+    customRecords,
+    searchQuery,
+  ]);
 
   const stats = [
     {
-      label: "Seeded Universities",
+      label: "Total Universities",
       value: String(seedUniversities.length),
       icon: Database,
       color: "text-emerald-500",
       bg: "bg-emerald-500/10",
     },
     {
-      label: "Managed Records",
-      value: String(records.length),
-      icon: Users,
+      label: "Total Programs",
+      value: String(programmes.length),
+      icon: Layers,
       color: "text-brand-500",
       bg: "bg-brand-500/10",
     },
@@ -116,16 +119,19 @@ export default function AdminDashboard() {
 
   const handleOpenAdd = () => {
     setModalType("Add");
-    setFormState(EMPTY_FORM);
+    setFormState({ ...EMPTY_FORM, isNewUniversity: true });
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (item) => {
     setModalType("Edit");
     setFormState({
-      id: item.id,
+      id: item.adminRecordId || null,
+      isNewUniversity: false,
       universityName: item.universityName || "",
       division: item.division || "Dhaka",
+      city: item.city || "",
+      website: item.website || "",
       department: item.department || "",
       totalCredits: item.totalCredits || "",
       perCreditFee: item.perCreditFee || "",
@@ -135,66 +141,50 @@ export default function AdminDashboard() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (item) => {
+  const handleDeleteCustom = async (item) => {
+    if (!item.adminRecordId) return;
     try {
-      if (isFirebaseConfigured && db && !String(item.id).startsWith("seed-")) {
-        await deleteDoc(doc(db, "university_records", item.id));
-      } else {
-        setRecords((prev) => prev.filter((r) => r.id !== item.id));
-      }
-      toast.success("Record deleted.");
+      await deleteUniversityRecord(item.adminRecordId);
+      toast.success("Custom record removed.");
     } catch (err) {
       toast.error(err?.message || "Failed to delete record.");
     }
   };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    const payload = {
-      universityName: formState.universityName.trim(),
-      division: formState.division,
-      department: formState.department.trim(),
-      totalCredits: String(formState.totalCredits || ""),
-      perCreditFee: String(formState.perCreditFee || ""),
-      totalDegreeCost: String(formState.totalDegreeCost || ""),
-      requirements: String(formState.requirements || ""),
-      updatedAt: new Date().toISOString(),
-    };
+  const handleDeleteUniversity = async (uniName) => {
+    const confirmed = window.confirm(
+      `"${uniName}" ইউনিভার্সিটি এবং এর সব প্রোগ্রাম মেইন লিস্ট থেকে ডিলিট করতে চাচ্ছেন?`,
+    );
+    if (!confirmed) return;
 
     try {
-      if (isFirebaseConfigured && db) {
-        if (
-          modalType === "Edit" &&
-          formState.id &&
-          !String(formState.id).startsWith("seed-")
-        ) {
-          await updateDoc(doc(db, "university_records", formState.id), {
-            ...payload,
-            updatedAt: serverTimestamp(),
-          });
-        } else {
-          await addDoc(collection(db, "university_records"), {
-            ...payload,
-            createdAt: serverTimestamp(),
-          });
-        }
-      } else if (modalType === "Edit" && formState.id) {
-        setRecords((prev) =>
-          prev.map((r) => (r.id === formState.id ? { ...r, ...payload } : r)),
-        );
-      } else {
-        setRecords((prev) => [
-          { id: `local-${Date.now()}`, ...payload },
-          ...prev,
-        ]);
-      }
+      await deleteUniversityCompletely(uniName);
+      toast.success(`${uniName} removed from main university list.`);
+    } catch (err) {
+      toast.error(err?.message || "Failed to delete university.");
+    }
+  };
 
+  const handleRestoreDeleted = () => {
+    restoreDeletedUniversities();
+    toast.success("All deleted universities restored.");
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await saveUniversityRecord(formState, formState.id);
       toast.success(
-        `Record ${modalType === "Add" ? "added" : "updated"} successfully!`,
+        modalType === "Add"
+          ? "Added and synced with main directory!"
+          : "Updated and synced with main directory!",
       );
       setIsModalOpen(false);
     } catch (err) {
       toast.error(err?.message || "Failed to save record.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -204,9 +194,17 @@ export default function AdminDashboard() {
         <div>
           <h1 className="text-3xl font-bold text-content">Admin Portal</h1>
           <p className="text-content-muted">
-            Manage university program fees, credits, and admission notes.
+            Edit existing university programs, delete universities, or add new
+            universities & costs directly into the main directory.
           </p>
         </div>
+
+        {deletedUniNames.length > 0 && (
+          <Button onClick={handleRestoreDeleted} variant="secondary" size="sm">
+            <RotateCcw className="w-4 h-4" /> Restore Deleted (
+            {deletedUniNames.length})
+          </Button>
+        )}
       </div>
 
       <div className="grid sm:grid-cols-3 gap-6 mb-10">
@@ -224,13 +222,32 @@ export default function AdminDashboard() {
       </div>
 
       <div className="card-base p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-content">
-            University Program Records
-          </h2>
-          <Button onClick={handleOpenAdd} size="sm">
-            <PlusCircle className="w-4 h-4" /> Add New
-          </Button>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div>
+            <h2 className="text-xl font-semibold text-content">
+              University & Program Records
+            </h2>
+            <p className="text-xs text-content-muted mt-0.5">
+              Showing {combinedRows.length} matching entries. Search any
+              university or department to edit or delete.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative">
+              <Search className="w-4 h-4 text-content-muted absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search university or dept..."
+                className="h-9 pl-9 pr-3 rounded-xl border border-line bg-card text-sm text-content focus:outline-none focus:border-brand-500"
+              />
+            </div>
+            <Button onClick={handleOpenAdd} size="sm">
+              <PlusCircle className="w-4 h-4" /> Add New
+            </Button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -245,9 +262,9 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {records.map((item) => (
+              {combinedRows.map((item, idx) => (
                 <tr
-                  key={item.id}
+                  key={`${item.universityName}-${item.department}-${idx}`}
                   className="border-b border-line hover:bg-card-muted/20"
                 >
                   <td className="px-4 py-4 font-medium text-content">
@@ -268,13 +285,27 @@ export default function AdminDashboard() {
                       Edit
                     </Button>
                     <Button
-                      onClick={() => handleDelete(item)}
+                      onClick={() =>
+                        handleDeleteUniversity(item.universityName)
+                      }
                       variant="ghost"
                       size="sm"
                       className="text-red-500 hover:text-red-600"
+                      title="Delete entire university"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4" /> Delete Uni
                     </Button>
+                    {item.isCustom && (
+                      <Button
+                        onClick={() => handleDeleteCustom(item)}
+                        variant="ghost"
+                        size="sm"
+                        className="text-amber-600 hover:text-amber-700"
+                        title="Delete custom record only"
+                      >
+                        Remove Row
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -301,10 +332,11 @@ export default function AdminDashboard() {
               </button>
 
               <h2 className="text-2xl font-bold text-content mb-2">
-                {modalType} University Record
+                {modalType} University / Program Record
               </h2>
               <p className="text-sm text-content-muted mb-6">
-                Update tuition, credits, and admission requirements.
+                Changes are saved and reflected in Find Results, University
+                Details, and Compare.
               </p>
 
               <form
@@ -314,7 +346,7 @@ export default function AdminDashboard() {
                 <FormField label="University Name" className="md:col-span-2">
                   <Input
                     type="text"
-                    placeholder="e.g. BRAC University"
+                    placeholder="e.g. BRAC University or New University Name"
                     value={formState.universityName}
                     onChange={(e) =>
                       setFormState({
@@ -344,6 +376,17 @@ export default function AdminDashboard() {
                   </Select>
                 </FormField>
 
+                <FormField label="City / District">
+                  <Input
+                    type="text"
+                    placeholder="e.g. Dhaka"
+                    value={formState.city}
+                    onChange={(e) =>
+                      setFormState({ ...formState, city: e.target.value })
+                    }
+                  />
+                </FormField>
+
                 <FormField label="Program / Department">
                   <Input
                     type="text"
@@ -353,6 +396,17 @@ export default function AdminDashboard() {
                       setFormState({ ...formState, department: e.target.value })
                     }
                     required
+                  />
+                </FormField>
+
+                <FormField label="Official Website URL">
+                  <Input
+                    type="text"
+                    placeholder="https://example.edu.bd"
+                    value={formState.website}
+                    onChange={(e) =>
+                      setFormState({ ...formState, website: e.target.value })
+                    }
                   />
                 </FormField>
 
@@ -402,7 +456,7 @@ export default function AdminDashboard() {
                 </FormField>
 
                 <FormField
-                  label="Admission Requirements (GPA / Subjects)"
+                  label="Admission Requirements / Notes"
                   className="md:col-span-2"
                 >
                   <textarea
@@ -419,17 +473,34 @@ export default function AdminDashboard() {
                   />
                 </FormField>
 
-                <div className="md:col-span-2 flex justify-end gap-3 mt-4 border-t border-line pt-5">
-                  <Button
-                    onClick={() => setIsModalOpen(false)}
-                    variant="secondary"
-                    type="button"
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit">
-                    <Save className="w-4 h-4" /> Save Record
-                  </Button>
+                <div className="md:col-span-2 flex items-center justify-between gap-3 mt-4 border-t border-line pt-5">
+                  <label className="inline-flex items-center gap-2 text-xs text-content-muted">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(formState.isNewUniversity)}
+                      onChange={(e) =>
+                        setFormState({
+                          ...formState,
+                          isNewUniversity: e.target.checked,
+                        })
+                      }
+                    />
+                    Create as new university if not in directory
+                  </label>
+
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={() => setIsModalOpen(false)}
+                      variant="secondary"
+                      type="button"
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={saving}>
+                      <Save className="w-4 h-4" />{" "}
+                      {saving ? "Saving..." : "Save Record"}
+                    </Button>
+                  </div>
                 </div>
               </form>
             </motion.div>

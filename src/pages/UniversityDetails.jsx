@@ -2,12 +2,24 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, MapPin, ExternalLink } from "lucide-react";
 import Section from "@/components/common/Section";
 import Badge from "@/components/common/Badge";
-import { universities, admissionRequirements } from "@/data/unimatchData";
-import { getProgrammeRows, getRequirements } from "@/utils/admission";
+import { getRequirements } from "@/utils/admission";
 import { getUniversityWebsite } from "@/data/universityWebsites";
+import { useUniversityData } from "@/context/UniversityDataContext";
+
+function Info({ label, value }) {
+  return (
+    <div className="rounded-xl border border-line bg-card-muted/40 p-3">
+      <p className="text-xs text-content-muted">{label}</p>
+      <p className="mt-1 font-semibold text-content">{value || "N/A"}</p>
+    </div>
+  );
+}
 
 export default function UniversityDetails() {
   const { id } = useParams();
+  const { universities, programmes, admissionRequirements } =
+    useUniversityData();
+
   const uni = universities.find((u) => u.id === id);
   if (!uni)
     return (
@@ -21,7 +33,7 @@ export default function UniversityDetails() {
       </Section>
     );
 
-  const rows = getProgrammeRows(uni.name);
+  const rows = programmes.filter((p) => p.university === uni.name);
   const reqs = admissionRequirements.filter((r) => r.university === uni.name);
   const { url: websiteUrl } = getUniversityWebsite(uni);
 
@@ -94,42 +106,13 @@ export default function UniversityDetails() {
                   />
                 </div>
                 {matched.length > 0 && (
-                  <div className="mt-4 rounded-xl bg-surface-muted p-4">
-                    <h4 className="text-sm font-semibold text-content">
-                      Admission requirements
-                    </h4>
-                    {matched.map((r) => (
-                      <div
-                        key={r.id}
-                        className="mt-2 text-sm text-content-muted"
-                      >
-                        <p className="font-medium text-content">
-                          {r.applicableProgramme}
-                        </p>
-                        <p>
-                          SSC GPA: {r.sscGpa || "Not stated"} · HSC GPA:{" "}
-                          {r.hscGpa || "Not stated"} · Combined:{" "}
-                          {r.combinedGpa || "Not stated"}
-                        </p>
-                        <p className="mt-1">{r.generalEligibility}</p>
-                        {r.requiredSubjects && (
-                          <p className="mt-1">
-                            <b>Required subjects:</b> {r.requiredSubjects}
-                          </p>
-                        )}
-                        {r.testConditions && (
-                          <p className="mt-1">
-                            <b>Test / special conditions:</b> {r.testConditions}
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                  <div className="mt-4 rounded-xl border border-line bg-surface-muted/40 p-3 text-xs text-content-muted">
+                    <strong className="text-content">
+                      Admission Requirement:{" "}
+                    </strong>
+                    {matched[0].generalEligibility ||
+                      `SSC GPA ${matched[0].sscGpa || "N/A"}, HSC GPA ${matched[0].hscGpa || "N/A"}`}
                   </div>
-                )}
-                {p.sourceNotes && (
-                  <p className="mt-3 text-xs leading-relaxed text-content-muted">
-                    <b>Source notes:</b> {p.sourceNotes}
-                  </p>
                 )}
               </article>
             );
@@ -137,62 +120,24 @@ export default function UniversityDetails() {
         </div>
       </div>
 
-      <div className="mt-8">
-        <h2 className="text-xl font-bold text-content">
-          University-wide admission records
-        </h2>
-        {reqs.length ? (
-          <div className="mt-3 space-y-3">
+      {reqs.length > 0 && (
+        <div className="mt-8 card-base p-6">
+          <h2 className="text-lg font-bold text-content mb-3">
+            General Admission Notes
+          </h2>
+          <ul className="space-y-2 text-sm text-content-muted list-disc pl-5">
             {reqs.map((r) => (
-              <div
-                key={r.id}
-                className="card-base p-4 text-sm text-content-muted"
-              >
-                <p className="font-semibold text-content">
-                  {r.applicableProgramme}
-                </p>
-                <p className="mt-1">
-                  SSC: {r.sscGpa || "Not stated"} · HSC:{" "}
-                  {r.hscGpa || "Not stated"} · Combined:{" "}
-                  {r.combinedGpa || "Not stated"}
-                </p>
-                <p className="mt-1">{r.generalEligibility}</p>
-                {r.requiredSubjects && (
-                  <p className="mt-1">
-                    <b>Required subjects:</b> {r.requiredSubjects}
-                  </p>
-                )}
-                {r.testConditions && (
-                  <p className="mt-1">
-                    <b>Test / special conditions:</b> {r.testConditions}
-                  </p>
-                )}
-              </div>
+              <li key={r.id}>
+                <strong className="text-content">
+                  {r.applicableProgramme}:
+                </strong>{" "}
+                {r.generalEligibility ||
+                  `Min SSC ${r.sscGpa || "N/A"}, Min HSC ${r.hscGpa || "N/A"}`}
+              </li>
             ))}
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-content-muted">
-            No university-specific admission requirement row was captured in the
-            workbook.
-          </p>
-        )}
-      </div>
-      <p className="mt-8 rounded-xl border border-line p-4 text-xs text-content-muted">
-        Important: The workbook contains captured source data, not a guarantee
-        of current admission eligibility or final payable fees. Contact the
-        university and verify the latest official circular before applying.
-      </p>
+          </ul>
+        </div>
+      )}
     </Section>
-  );
-}
-
-function Info({ label, value }) {
-  return (
-    <div className="rounded-xl bg-surface-muted p-3">
-      <p className="text-xs text-content-muted">{label}</p>
-      <p className="mt-1 font-semibold text-content">
-        {value || "Not published"}
-      </p>
-    </div>
   );
 }

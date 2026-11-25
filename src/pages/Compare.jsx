@@ -4,18 +4,19 @@ import { Link } from "react-router-dom";
 import Section from "@/components/common/Section";
 import SectionHeading from "@/components/common/SectionHeading";
 import Button from "@/components/common/Button";
-import { programmes, universities } from "@/data/unimatchData";
 import { getRequirements } from "@/utils/admission";
+import { useUniversityData } from "@/context/UniversityDataContext";
 
 export default function Compare() {
+  const { programmes, universities } = useUniversityData();
+
   const [selectedIds, setSelectedIds] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [pendingSelection, setPendingSelection] = useState(null); // ড্রপডাউন থেকে সিলেক্ট করা আইটেম
+  const [pendingSelection, setPendingSelection] = useState(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const dropdownRef = useRef(null);
 
-  // ড্রপডাউনের বাইরে ক্লিক করলে সেটি বন্ধ করার জন্য
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -26,9 +27,7 @@ export default function Compare() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [dropdownRef]);
 
-  // ইউজারের সার্চ অনুযায়ী প্রোগ্রাম ফিল্টার করা
   const filteredProgrammes = useMemo(() => {
-    // যদি ইউজার অলরেডি ড্রপডাউন থেকে সিলেক্ট করে থাকে, তবে সব লিস্ট দেখানোর দরকার নেই
     if (!searchTerm.trim() || pendingSelection) return programmes;
 
     const lowerTerm = searchTerm.toLowerCase();
@@ -37,9 +36,8 @@ export default function Compare() {
         p.programme.toLowerCase().includes(lowerTerm) ||
         p.university.toLowerCase().includes(lowerTerm),
     );
-  }, [searchTerm, pendingSelection]);
+  }, [searchTerm, pendingSelection, programmes]);
 
-  // ফিল্টার করা প্রোগ্রামগুলোকে ইউনিভার্সিটির নাম অনুযায়ী গ্রুপ করা
   const groupedProgrammes = useMemo(() => {
     const groups = {};
     filteredProgrammes.forEach((p) => {
@@ -54,17 +52,18 @@ export default function Compare() {
       }));
   }, [filteredProgrammes]);
 
-  // সিলেক্ট করা আইডিগুলো থেকে ফুল ডেটা বের করা
   const selectedData = useMemo(() => {
-    return selectedIds.map((id) => {
-      const prog = programmes.find((p) => p.id === id);
-      const uni = universities.find((u) => u.name === prog.university);
-      const reqs = getRequirements(prog.university, prog.programme);
-      return { ...prog, uni, reqs };
-    });
-  }, [selectedIds]);
+    return selectedIds
+      .map((id) => {
+        const prog = programmes.find((p) => p.id === id);
+        if (!prog) return null;
+        const uni = universities.find((u) => u.name === prog.university);
+        const reqs = getRequirements(prog.university, prog.programme);
+        return { ...prog, uni, reqs };
+      })
+      .filter(Boolean);
+  }, [selectedIds, programmes, universities]);
 
-  // Add to Compare বাটনে ক্লিক করলে লিস্টে যুক্ত হবে
   const handleAddSubmit = (e) => {
     e.preventDefault();
     if (
@@ -74,15 +73,14 @@ export default function Compare() {
     ) {
       setSelectedIds([...selectedIds, pendingSelection]);
       setPendingSelection(null);
-      setSearchTerm(""); // ইনপুট ক্লিয়ার করে দেওয়া
+      setSearchTerm("");
     }
   };
 
-  // ড্রপডাউন থেকে কোনো আইটেমে ক্লিক করলে
   const handleOptionSelect = (progId, progName, uniName) => {
     setPendingSelection(progId);
-    setSearchTerm(`${progName} - ${uniName}`); // ইনপুটে নাম দেখাবে
-    setIsDropdownOpen(false); // ড্রপডাউন বন্ধ হবে
+    setSearchTerm(`${progName} - ${uniName}`);
+    setIsDropdownOpen(false);
   };
 
   const handleRemove = (idToRemove) => {
@@ -97,7 +95,6 @@ export default function Compare() {
         subtitle="Select up to 3 programs to compare tuition fees, credits, and admission requirements side by side."
       />
 
-      {/* Search, Selection & Add Button Area */}
       <div className="mx-auto mt-10 max-w-2xl card-base p-6 overflow-visible">
         <form
           onSubmit={handleAddSubmit}
@@ -111,7 +108,7 @@ export default function Compare() {
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
-                  setPendingSelection(null); // নতুন কিছু টাইপ করলে সিলেকশন বাতিল হবে
+                  setPendingSelection(null);
                   setIsDropdownOpen(true);
                 }}
                 onFocus={() => setIsDropdownOpen(true)}
@@ -121,7 +118,6 @@ export default function Compare() {
               />
             </div>
 
-            {/* Custom Searchable Dropdown */}
             {isDropdownOpen && !pendingSelection && selectedIds.length < 3 && (
               <div className="absolute z-50 w-full mt-2 bg-card border border-line rounded-xl shadow-xl max-h-72 overflow-y-auto">
                 {groupedProgrammes.length > 0 ? (
@@ -170,7 +166,6 @@ export default function Compare() {
             )}
           </div>
 
-          {/* Add to Compare Button */}
           <Button
             type="submit"
             size="lg"
@@ -188,7 +183,6 @@ export default function Compare() {
         )}
       </div>
 
-      {/* Comparison Grid */}
       {selectedData.length > 0 ? (
         <div
           className={`mt-12 grid gap-6 ${
@@ -204,7 +198,6 @@ export default function Compare() {
               key={data.id}
               className="card-base flex flex-col relative overflow-hidden"
             >
-              {/* Remove Button */}
               <button
                 onClick={() => handleRemove(data.id)}
                 className="absolute top-4 right-4 p-1.5 rounded-lg bg-card-muted hover:bg-red-500/10 hover:text-red-500 transition z-10"
@@ -213,7 +206,6 @@ export default function Compare() {
                 <X className="w-4 h-4" />
               </button>
 
-              {/* Header */}
               <div className="p-6 border-b border-line bg-surface-muted/30 pt-10">
                 <p className="text-xs font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400 mb-2 leading-relaxed pr-6">
                   {data.uni?.name || data.university}
@@ -228,7 +220,6 @@ export default function Compare() {
                 </p>
               </div>
 
-              {/* Body / Stats */}
               <div className="p-6 flex-1 flex flex-col gap-6">
                 <div>
                   <p className="text-xs text-content-muted uppercase tracking-wider font-semibold mb-1">
@@ -288,7 +279,6 @@ export default function Compare() {
                 </div>
               </div>
 
-              {/* Footer */}
               <div className="p-4 border-t border-line bg-surface-muted/30">
                 <Link
                   to={data.uni?.id ? `/university/${data.uni.id}` : "#"}

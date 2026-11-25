@@ -73,13 +73,41 @@ export function AuthProvider({ children }) {
   const syncUserDocument = useCallback(async (firebaseUser, extraName = "") => {
     if (!isFirebaseConfigured || !db || !firebaseUser) return null;
 
-    const userRef = doc(db, "users", firebaseUser.uid);
-    const snap = await getDoc(userRef);
     const resolvedRole =
       firebaseUser.email?.toLowerCase() === ADMIN_EMAIL ? "admin" : "user";
 
-    if (!snap.exists()) {
-      const initialData = {
+    try {
+      const userRef = doc(db, "users", firebaseUser.uid);
+      const snap = await getDoc(userRef);
+
+      if (!snap.exists()) {
+        const initialData = {
+          name:
+            extraName ||
+            firebaseUser.displayName ||
+            firebaseUser.email?.split("@")[0] ||
+            "Student User",
+          email: firebaseUser.email || "",
+          role: resolvedRole,
+          sscGpa: "5.00",
+          hscGpa: "4.83",
+          targetSubject: "CSE / Engineering",
+          savedUniversities: [],
+          testHistory: [],
+          createdAt: serverTimestamp(),
+        };
+        await setDoc(userRef, initialData);
+        return initialData;
+      }
+
+      const data = snap.data();
+      return {
+        ...data,
+        role: data.role || resolvedRole,
+      };
+    } catch (err) {
+      console.warn("Firestore profile sync skipped:", err?.message || err);
+      return {
         name:
           extraName ||
           firebaseUser.displayName ||
@@ -87,22 +115,8 @@ export function AuthProvider({ children }) {
           "Student User",
         email: firebaseUser.email || "",
         role: resolvedRole,
-        sscGpa: "5.00",
-        hscGpa: "4.83",
-        targetSubject: "CSE / Engineering",
-        savedUniversities: [],
-        testHistory: [],
-        createdAt: serverTimestamp(),
       };
-      await setDoc(userRef, initialData);
-      return initialData;
     }
-
-    const data = snap.data();
-    return {
-      ...data,
-      role: data.role || resolvedRole,
-    };
   }, []);
 
   useEffect(() => {
@@ -114,45 +128,42 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        try {
-          const userData = await syncUserDocument(firebaseUser);
-          if (userData) {
-            const activeRole = userData.role || "user";
-            setRole(activeRole);
-            localStorage.setItem("unimatch_role", activeRole);
+        const fallbackRole =
+          firebaseUser.email?.toLowerCase() === ADMIN_EMAIL ? "admin" : "user";
+        setRole(fallbackRole);
+        localStorage.setItem("unimatch_role", fallbackRole);
 
-            const nextProfile = {
-              name: userData.name || firebaseUser.displayName || "Student User",
-              sscGpa: userData.sscGpa ?? "5.00",
-              hscGpa: userData.hscGpa ?? "4.83",
-              targetSubject: userData.targetSubject || "CSE / Engineering",
-            };
-            setProfile(nextProfile);
-            localStorage.setItem(
-              "unimatch_profile",
-              JSON.stringify(nextProfile),
-            );
+        const userData = await syncUserDocument(firebaseUser);
+        if (userData) {
+          const activeRole = userData.role || fallbackRole;
+          setRole(activeRole);
+          localStorage.setItem("unimatch_role", activeRole);
 
-            const cloudBookmarks = Array.isArray(userData.savedUniversities)
-              ? userData.savedUniversities
-              : [];
-            setSavedUnis(cloudBookmarks);
+          const nextProfile = {
+            name: userData.name || firebaseUser.displayName || "Student User",
+            sscGpa: userData.sscGpa ?? "5.00",
+            hscGpa: userData.hscGpa ?? "4.83",
+            targetSubject: userData.targetSubject || "CSE / Engineering",
+          };
+          setProfile(nextProfile);
+          localStorage.setItem("unimatch_profile", JSON.stringify(nextProfile));
+
+          if (Array.isArray(userData.savedUniversities)) {
+            setSavedUnis(userData.savedUniversities);
             localStorage.setItem(
               "unimatch_saved_unis",
-              JSON.stringify(cloudBookmarks),
+              JSON.stringify(userData.savedUniversities),
             );
             window.dispatchEvent(new Event("unimatch_bookmark_updated"));
-
-            if (Array.isArray(userData.testHistory)) {
-              setTestHistory(userData.testHistory);
-              localStorage.setItem(
-                "unimatch_test_history",
-                JSON.stringify(userData.testHistory),
-              );
-            }
           }
-        } catch (err) {
-          console.error("Firestore user sync error:", err);
+
+          if (Array.isArray(userData.testHistory)) {
+            setTestHistory(userData.testHistory);
+            localStorage.setItem(
+              "unimatch_test_history",
+              JSON.stringify(userData.testHistory),
+            );
+          }
         }
       } else {
         setUser(null);
@@ -169,7 +180,9 @@ export function AuthProvider({ children }) {
     if (isFirebaseConfigured && auth) {
       const cred = await signInWithEmailAndPassword(auth, email, password);
       const userData = await syncUserDocument(cred.user);
-      const activeRole = userData?.role || "user";
+      const activeRole =
+        userData?.role ||
+        (cred.user.email?.toLowerCase() === ADMIN_EMAIL ? "admin" : "user");
       setRole(activeRole);
       localStorage.setItem("unimatch_role", activeRole);
       return { role: activeRole };
@@ -189,10 +202,16 @@ export function AuthProvider({ children }) {
     if (isFirebaseConfigured && auth) {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       if (name) {
-        await updateProfile(cred.user, { displayName: name });
+        try {
+          await updateProfile(cred.user, { displayName: name });
+        } catch {
+          // ignore profile update error
+        }
       }
       const userData = await syncUserDocument(cred.user, name);
-      const activeRole = userData?.role || "user";
+      const activeRole =
+        userData?.role ||
+        (cred.user.email?.toLowerCase() === ADMIN_EMAIL ? "admin" : "user");
       setRole(activeRole);
       localStorage.setItem("unimatch_role", activeRole);
       return { role: activeRole };
@@ -214,7 +233,9 @@ export function AuthProvider({ children }) {
     }
     const cred = await signInWithPopup(auth, googleProvider);
     const userData = await syncUserDocument(cred.user);
-    const activeRole = userData?.role || "user";
+    const activeRole =
+      userData?.role ||
+      (cred.user.email?.toLowerCase() === ADMIN_EMAIL ? "admin" : "user");
     setRole(activeRole);
     localStorage.setItem("unimatch_role", activeRole);
     return { role: activeRole };
@@ -234,13 +255,17 @@ export function AuthProvider({ children }) {
     localStorage.setItem("unimatch_profile", JSON.stringify(nextProfile));
 
     if (isFirebaseConfigured && db && user) {
-      await updateDoc(doc(db, "users", user.uid), {
-        name: nextProfile.name,
-        sscGpa: nextProfile.sscGpa,
-        hscGpa: nextProfile.hscGpa,
-        targetSubject: nextProfile.targetSubject,
-        updatedAt: serverTimestamp(),
-      });
+      try {
+        await updateDoc(doc(db, "users", user.uid), {
+          name: nextProfile.name,
+          sscGpa: nextProfile.sscGpa,
+          hscGpa: nextProfile.hscGpa,
+          targetSubject: nextProfile.targetSubject,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (err) {
+        console.warn("Profile cloud update failed:", err?.message || err);
+      }
     }
   };
 
@@ -258,10 +283,14 @@ export function AuthProvider({ children }) {
     window.dispatchEvent(new Event("unimatch_bookmark_updated"));
 
     if (isFirebaseConfigured && db && user) {
-      await updateDoc(doc(db, "users", user.uid), {
-        savedUniversities: nextSaved,
-        updatedAt: serverTimestamp(),
-      });
+      try {
+        await updateDoc(doc(db, "users", user.uid), {
+          savedUniversities: nextSaved,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (err) {
+        console.warn("Bookmark cloud sync failed:", err?.message || err);
+      }
     }
 
     return !exists;
@@ -276,10 +305,14 @@ export function AuthProvider({ children }) {
     setTestHistory(nextHistory);
 
     if (isFirebaseConfigured && db && user) {
-      await updateDoc(doc(db, "users", user.uid), {
-        testHistory: nextHistory,
-        updatedAt: serverTimestamp(),
-      });
+      try {
+        await updateDoc(doc(db, "users", user.uid), {
+          testHistory: nextHistory,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (err) {
+        console.warn("Test score cloud sync failed:", err?.message || err);
+      }
     }
   };
 
@@ -288,10 +321,14 @@ export function AuthProvider({ children }) {
     setTestHistory([]);
 
     if (isFirebaseConfigured && db && user) {
-      await updateDoc(doc(db, "users", user.uid), {
-        testHistory: [],
-        updatedAt: serverTimestamp(),
-      });
+      try {
+        await updateDoc(doc(db, "users", user.uid), {
+          testHistory: [],
+          updatedAt: serverTimestamp(),
+        });
+      } catch (err) {
+        console.warn("Clear history cloud sync failed:", err?.message || err);
+      }
     }
   };
 

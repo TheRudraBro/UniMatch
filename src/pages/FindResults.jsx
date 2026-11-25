@@ -6,7 +6,7 @@ import SectionHeading from "@/components/common/SectionHeading";
 import { Input, Select } from "@/components/common/Field";
 import UniversityCard from "@/components/common/UniversityCard";
 import MatchedProgramCard from "@/components/common/MatchedProgramCard";
-import { seedUniversities } from "@/data/seedUniversities";
+import { useUniversityData } from "@/context/UniversityDataContext";
 import {
   searchMatchedDepartments,
   searchProgrammesByKeyword,
@@ -17,13 +17,13 @@ import Button from "@/components/common/Button";
 import Badge from "@/components/common/Badge";
 
 export default function FindResults() {
+  const { seedUniversities } = useUniversityData();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [deptDivisionFilter, setDeptDivisionFilter] = useState("");
   const [sortBy, setSortBy] = useState("default");
 
-  // Quick Search parameters from URL
   const sscGpa = searchParams.get("sscGpa");
   const hscGpa = searchParams.get("hscGpa");
   const background = searchParams.get("background");
@@ -39,7 +39,6 @@ export default function FindResults() {
     setSearchQuery(searchParams.get("q") || "");
   }, [searchParams]);
 
-  // Mode 1: Quick Search (Profile + Budget + Group)
   const quickMatchResults = useMemo(() => {
     if (!isQuickMatchMode) return [];
     return searchMatchedDepartments({
@@ -62,7 +61,6 @@ export default function FindResults() {
     searchQuery,
   ]);
 
-  // Apply Sort By (Default / Cost Low to High / Cost High to Low) for Quick Match
   const sortedQuickMatchResults = useMemo(() => {
     if (sortBy === "default") return quickMatchResults;
 
@@ -85,7 +83,6 @@ export default function FindResults() {
     return list;
   }, [quickMatchResults, sortBy]);
 
-  // Mode 2: Header / Hero Search Bar (Smart detection: Department vs University/City)
   const keywordDeptSearch = useMemo(() => {
     if (isQuickMatchMode || !searchQuery.trim()) {
       return { isDepartmentSearch: false, results: [] };
@@ -120,7 +117,6 @@ export default function FindResults() {
     ? sortedQuickMatchResults
     : sortedKeywordDeptResults;
 
-  // Mode 3: Normal University Directory Mode
   const filteredUniversities = useMemo(() => {
     if (showProgramCards) return [];
     if (!searchQuery.trim()) return seedUniversities;
@@ -142,7 +138,7 @@ export default function FindResults() {
         matchName || matchShortName || matchCity || matchDivision || matchDept
       );
     });
-  }, [showProgramCards, searchQuery]);
+  }, [showProgramCards, searchQuery, seedUniversities]);
 
   const handleQuickDivisionChange = (newDiv) => {
     const next = new URLSearchParams(searchParams);
@@ -187,7 +183,6 @@ export default function FindResults() {
         }
       />
 
-      {/* Active Quick Search Criteria Summary */}
       {isQuickMatchMode && (
         <div className="max-w-5xl mx-auto mt-8 card-base p-4 sm:p-5 bg-brand-500/5 border-brand-500/20 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -220,6 +215,7 @@ export default function FindResults() {
             </Link>
             <span className="text-line">|</span>
             <button
+              type="button"
               onClick={handleResetAll}
               className="inline-flex items-center gap-1 text-xs font-semibold text-red-500 hover:underline"
             >
@@ -229,7 +225,6 @@ export default function FindResults() {
         </div>
       )}
 
-      {/* Top Search Bar */}
       <div className="max-w-3xl mx-auto mt-8 mb-8">
         <div className="relative shadow-sm">
           <Input
@@ -254,7 +249,6 @@ export default function FindResults() {
         </div>
       </div>
 
-      {/* Filter & Sort Controls (For Quick Search & Department Search) */}
       {showProgramCards && (
         <div className="max-w-5xl mx-auto mb-6 grid gap-4 sm:grid-cols-2">
           <Select
@@ -294,7 +288,6 @@ export default function FindResults() {
         </div>
       )}
 
-      {/* Results Area */}
       <div className="max-w-5xl mx-auto">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-2 bg-surface-muted p-4 rounded-xl border border-line">
           <p className="text-sm text-content-muted">
@@ -321,6 +314,7 @@ export default function FindResults() {
 
           {!isQuickMatchMode && keywordDeptSearch.isDepartmentSearch && (
             <button
+              type="button"
               onClick={handleResetAll}
               className="text-xs font-semibold text-brand-600 dark:text-brand-300 hover:underline"
             >
@@ -329,7 +323,6 @@ export default function FindResults() {
           )}
         </div>
 
-        {/* Render Matched Department Cards OR Directory University Cards */}
         {showProgramCards ? (
           programCardsList.length > 0 ? (
             <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
