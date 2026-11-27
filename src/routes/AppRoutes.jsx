@@ -13,6 +13,7 @@ import UserDashboard from "@/pages/UserDashboard";
 import AdminDashboard from "@/pages/AdminDashboard";
 import Compare from "@/pages/Compare";
 import International from "@/pages/International";
+import InternationalDetails from "@/pages/InternationalDetails";
 import Preparation from "@/pages/Preparation";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
@@ -32,6 +33,7 @@ export default function AppRoutes() {
         <Route path="signup" element={<Signup />} />
         <Route path="compare" element={<Compare />} />
         <Route path="international" element={<International />} />
+        <Route path="international/:id" element={<InternationalDetails />} />
         <Route path="preparation" element={<Preparation />} />
         <Route path="about" element={<About />} />
         <Route path="contact" element={<Contact />} />
